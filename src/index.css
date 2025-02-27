@@ -1,0 +1,238 @@
+@import "tailwindcss";
+
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+
+button:hover {
+  border-color: #646cff;
+}
+
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+.cursor-pointer-active {
+  cursor: pointer;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+
+  a:hover {
+    color: #747bff;
+  }
+
+  button {
+    background-color: #f9f9f9;
+  }
+}
+
+
+
+#map {
+  width: 100vw;
+  height: 100vh;
+}
+
+.control-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 350px;
+  min-height: 200px;
+  background: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  padding: 12px 24px;
+  margin: 20px;
+  font-size: 13px;
+  line-height: 1;
+  color: #6b6b76;
+  /* text-transform: uppercase; */
+  outline: none;
+  opacity: .9;
+}
+
+label {
+  display: inline-block;
+  width: 150px;
+}
+
+input {
+  margin-left: 20px;
+}
+
+.scrollable-list {
+  max-height: 400px;
+  /* или любая другая высота */
+  overflow-y: auto;
+  padding-right: 8px;
+  /* чтобы скроллбар не наезжал на текст */
+}
+
+.sidePanelText {
+  margin: .5em
+}
+
+.text-gray-600.info-text {
+  line-height: 1.5;
+}
+
+.maplibregl-popup {
+  display: flex;
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  will-change: transform;
+  z-index: 1000;
+  max-width: 240px;
+  transform: inherit !important;
+
+  /* Убедимся, что Popup всегда поверх карты */
+}
+
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip {
+  align-self: center;
+  border-bottom: none;
+  border-top-color: #fff;
+  z-index: 1001;
+  transform: inherit !important;
+  /* Убедимся, что стрелка Popup тоже поверх */
+}
+
+.maplibregl-popup-content {
+  background: #fff;
+  border-radius: 3px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .1);
+  padding: 15px 10px;
+  pointer-events: auto;
+  z-index: 1000;
+  /* Убедимся, что контент Popup поверх */
+  position: relative;
+  /* Создаём новый контекст стекирования */
+}
+
+
+.city-circles-legend {
+  background-color: rgba(255, 255, 255, 0.8);
+  /* Белый фон с небольшой прозрачностью */
+  padding: 10px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-family: sans-serif;
+  position: absolute;
+  /* Абсолютное позиционирование, чтобы разместить поверх карты */
+  bottom: 20px;
+  /* Расположение снизу */
+  left: 20px;
+  /* Расположение слева */
+  z-index: 1;
+  /* Убедись, что легенда поверх карты */
+  pointer-events: none;
+  /* Чтобы легенда не перехватывала клики карты */
+}
+
+.legend-title {
+  font-weight: bold;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.legend-item {
+  margin-bottom: 15px;
+}
+
+.legend-label {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.size-scale,
+.color-scale {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.size-item,
+.color-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-right: 10px;
+}
+
+.size-item svg {
+  margin-bottom: 5px;
+}
+
+.color-item .color-box {
+  width: 30px;
+  height: 20px;
+  border: 1px solid #ccc;
+  margin-bottom: 5px;
+}
+
+.population-label {
+  font-size: 10px;
+  color: #555;
+  text-align: center;
+}
+
+.size-description,
+.color-description {
+  font-style: italic;
+  color: #777;
+  text-align: center;
+}
