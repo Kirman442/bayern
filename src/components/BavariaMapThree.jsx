@@ -173,6 +173,7 @@ const BavariaMapThree = () => {
                             handleDistrictClick(object);
                         } else if (layer.id === 'city-points') { // <---- ИСПРАВЛЕНО условие: layer.id === 'city-points' 
                             setClickedCity(object);
+                            setSelectedDistrictCityInfo(object);
                             // console.log("onClick: City Object properties:", object.properties);
                         } else {
                             // console.log("onClick: Unknown layer clicked:", layer.id);
