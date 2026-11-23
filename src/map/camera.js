@@ -2,9 +2,9 @@ import { FlyToInterpolator, WebMercatorViewport } from '@deck.gl/core';
 
 export const MIN_ZOOM = 5;
 export const MAX_ZOOM = 13;
-// Fitting a small Landkreis never zooms in further than this, so its extrusion stays readable.
-const MAX_FIT_ZOOM = 8.8;
-const PITCH = 33;
+// Fitting a small Landkreis or kreisfreie Stadt never zooms in further than this.
+const MAX_FIT_ZOOM = 10;
+const PITCH = 0;
 
 // [[west, south], [east, north]] of one or more GeoJSON features.
 export function boundsOf(features) {
