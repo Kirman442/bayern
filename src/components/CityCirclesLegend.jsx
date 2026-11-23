@@ -20,7 +20,7 @@ const CityCirclesLegend = () => {
                                 <circle
                                     cx={maxRadius + 2} cy={maxRadius * 2 + 2 - r} r={r}
                                     fill={`rgb(${color.join(',')})`}
-                                    stroke="#888" strokeWidth="0.5"
+                                    stroke="rgb(45,45,60)" strokeWidth="1"
                                 />
                             </svg>
                             <span style={{ fontSize: '10px', marginTop: '4px' }}>{formatInt(population)}</span>
