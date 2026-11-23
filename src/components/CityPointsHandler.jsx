@@ -15,7 +15,7 @@ const POINT_COLOR_SCALE = scaleLinear()
 
 const useCombinedCityData = () => {
     const [allCitiesData, setAllCitiesData] = useState([]);
-    const [isLoading, setIsLoading] = useState(false);
+    const [, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
     const [citiesCache, setCitiesCache] = useState({});
     const [activeCities, setActiveCities] = useState(null);
@@ -98,7 +98,6 @@ const useCombinedCityData = () => {
             cityData = activeCities;
         }
 
-        // Фильтруем некорректные данные
         cityData = cityData.filter(city => city && city.properties && city.properties.population !== undefined);
 
         if (cityData.length === 0) return null;
@@ -115,7 +114,6 @@ const useCombinedCityData = () => {
             radiusMaxPixels: 25,
             lineWidthMinPixels: 1,
             getPosition: d => d.geometry.coordinates,
-            // getRadius: d => POINT_SIZE_SCALE(d.properties.population * 1.5),
             getRadius: d => {
                 const cityUniqueId = `${d.properties['land-id']}-${d.properties.id}`;
                 const selectedCityUniqueId = clickedCity && clickedCity.properties ?
@@ -126,19 +124,16 @@ const useCombinedCityData = () => {
 
                 return isSelectedCityInDistrict ? POINT_SIZE_SCALE(d.properties.population * 10) : POINT_SIZE_SCALE(d.properties.population * 1.5);
             },
-            // getFillColor: d => POINT_COLOR_SCALE(d.properties.population * 1.5),
             getFillColor: d => {
                 if (!d || !d.properties || !d.properties.population) {
                     return [0, 0, 0, 0]; // Возвращаем прозрачный цвет
                 }
                 const cityUniqueId = `${d.properties['land-id']}-${d.properties.id}`;
 
-                // Создаём уникальный идентификатор для выбранного города
                 const selectedCityUniqueId = clickedCity && clickedCity.properties ?
                     `${clickedCity.properties['land-id']}-${clickedCity.properties.id}` :
                     null;
 
-                // Проверяем, выбран ли город
                 const isSelectedCityInDistrict = cityUniqueId === selectedCityUniqueId;
                 if (isSelectedCityInDistrict) {
                     return [100, 150, 255, 200]; // Цвет для выбранного города
@@ -159,7 +154,6 @@ const useCombinedCityData = () => {
 
     return {
         allCitiesData,
-        // isLoading,
         error,
         getCitiesForDistrict,
         getCitiesForRegion,
@@ -170,37 +164,3 @@ const useCombinedCityData = () => {
 
 export default useCombinedCityData;
 
-
-// getFillColor: d => {
-//     // console.log("City data:", d); // Логируем данные города
-//     if (!d || !d.properties || !d.properties.population) {
-//         // console.warn("Invalid city data:", d); // Логируем некорректные данные
-//         return [0, 0, 0, 0]; // Возвращаем прозрачный цвет
-//     }
-
-//     // Создаём уникальный идентификатор для города
-//     const cityUniqueId = `${d.properties['land-id']}-${d.properties.id}`;
-//     // console.log("City data:", d);
-//     // console.log("City unique ID:", cityUniqueId);
-
-//     // Создаём уникальный идентификатор для выбранного города
-//     const selectedCityUniqueId = clickedCity && clickedCity.properties ?
-//         `${clickedCity.properties['land-id']}-${clickedCity.properties.id}` :
-//         null;
-//     // console.log("electedCityUniqueId unique ID:", selectedCityUniqueId);
-
-//     // Проверяем, выбран ли город
-//     const isSelectedCityInDistrict = cityUniqueId === selectedCityUniqueId;
-//     // console.log("Смотрим на константу isSelectedCityInDistrict:", isSelectedCityInDistrict); // Логируем некорректные данные
-
-//     // const isSelectedCityInDisdtrict = selectedCityInDistrict &&
-//     //     d.properties &&
-//     //     selectedCityInDistrict.properties &&
-//     //     d.properties.population === selectedCityInDistrict.properties.population;
-
-//     if (isSelectedCityInDistrict) {
-//         return [100, 150, 255, 200]; // Цвет для выбранного города
-//     }
-
-//     return POINT_COLOR_SCALE(d.properties.population * 1.5); // Цвет для невыбранных городов
-// },

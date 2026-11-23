@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { GeoJsonLayer } from '@deck.gl/layers';
-import { scaleThreshold, scaleLinear } from 'd3-scale';
+import { scaleThreshold } from 'd3-scale';
 
 const DISTRICTS_URL = 'https://raw.githubusercontent.com/Kirman442/deckgl/main/landkreisestaedte_min.json';
 const INDEPENDENT_CITIES_URL = 'https://raw.githubusercontent.com/Kirman442/deckgl/main/kreisfreiestaedte_min.json';
@@ -9,10 +9,8 @@ const useDistricts = () => {
     const [districts, setDistricts] = useState([]); // Края
     const [cities, setCities] = useState([]); // Независимые города
 
-    // Загрузка данных о краях и независимых городах
     const fetchDistrictsAndCitiesData = async (regionId) => {
         try {
-            // Загружаем данные о краях
             const districtsResponse = await fetch(DISTRICTS_URL);
             const districtsData = await districtsResponse.json();
             const filteredDistricts = districtsData.features.filter(
@@ -27,7 +25,6 @@ const useDistricts = () => {
                 };
             });
 
-            // Загружаем данные о независимых городах
             const citiesResponse = await fetch(INDEPENDENT_CITIES_URL);
             const citiesData = await citiesResponse.json();
             const filteredCities = citiesData.features.filter(
@@ -47,15 +44,13 @@ const useDistricts = () => {
                     }
                 };
             });
-            // Сохраняем данные раздельно
             setDistricts(filteredDistricts);
             setCities(filteredCities);
         } catch (error) {
-            // console.error('Error loading districts or cities:', error);
+            console.error('Error loading districts or cities:', error);
         }
     };
 
-    // Сброс данных
     const resetDistrictsData = () => {
         setDistricts([]);
         setCities([]);
@@ -81,7 +76,6 @@ const useDistricts = () => {
             [230, 245, 208, 255]
         ]);
 
-    // Создание слоя для краёв и независимых городов
     const createDistrictsLayer = (hoveredDistrict, selectedDistrictCity) => {
         const combinedData = [...districts, ...cities];
         if (combinedData.length === 0) return null;
@@ -110,10 +104,6 @@ const useDistricts = () => {
                     ? (d.properties.population / d.properties.area) * 3 // Высота для независимых городов
                     : (d.properties.population / d.properties.area) * 20; // Высота для краёв
             },
-            // getElevation: d =>
-            //     d.properties.name.includes('Kreisfreiestadt') || d.properties.name.includes('Landeshauptstadt')
-            //         ? (d.properties.population / d.properties.area) * 3
-            //         : (d.properties.population / d.properties.area) * 20,
             getFillColor: d => {
                 const isHovered = hoveredDistrict && d.properties.id === hoveredDistrict.properties.id;
                 const isSelectedDistrictCity = selectedDistrictCity && d.properties.id === selectedDistrictCity.properties.id;

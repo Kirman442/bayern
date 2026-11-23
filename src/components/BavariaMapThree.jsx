@@ -1,25 +1,14 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import DeckGL from '@deck.gl/react';
-// import { Map, Popup } from 'react-map-gl/maplibre';
 import { Map } from '@vis.gl/react-maplibre';
 import useBoundary from './BoundaryHandler';
 import useRegions from './RegionsHandler';
 import useDistricts from './DistrictsHandler';
 import SidePanel from './SidePanel';
 import useCombinedCityData from './CityPointsHandler';
-// import { useCityData } from './hooks/useCityData'
-// import ColorLegend from './ColorLegend';
-// import { AmbientLight, PointLight, LightingEffect } from '@deck.gl/core';
-// import CustomPopup from './CustomPopup';
-// import DistrictDetails from './DistrictDetails'
 
-const MY_MAPTILER_KEY = 'e2A1Jt6inqIg08laqgHR';
-// const MAP_STYLE = 'https://api.maptiler.com/maps/dataviz-dark/style.json';
-// const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json';
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/positron-nolabels-gl-style/style.json';
-// const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json'
 const mapStyle = `${MAP_STYLE}`;
-// const mapStyle = `${MAP_STYLE}?key=${MY_MAPTILER_KEY}`;
 
 const INITIAL_VIEW_STATE = {
     longitude: 11.4,
@@ -32,7 +21,6 @@ const INITIAL_VIEW_STATE = {
 };
 
 const BavariaMapThree = () => {
-    // const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
     const [selectedRegion, setSelectedRegion] = useState(null);
     const [hoveredRegion, setHoveredRegion] = useState(null);
     const [hoveredDistrict, setHoveredDistrict] = useState(null);
@@ -41,21 +29,17 @@ const BavariaMapThree = () => {
     const [selectedDistrictCity, setSelectedDistrictCity] = useState(null);
     const [selectedRegionCity, setSelectedRegionCity] = useState(null);
 
-    const [selectedRegionInfo, setSelectedRegionInfo] = useState(null); // New state for region info in SidePanel
+    const [, setSelectedRegionInfo] = useState(null);
     const [selectedDistrictCityInfo, setSelectedDistrictCityInfo] = useState(null); // New state for district/city info in SidePanel
 
-    // Используем хуки для регионов и краёв
     const { createGlowLayer } = useBoundary();
     const { regionsWithCentroids, isLoading, createRegionsLayer, createRegionsTextLayer } = useRegions();
     const { districts, cities, fetchDistrictsAndCitiesData, createDistrictsLayer, resetDistrictsData, DISTRICTS_COLOR_SCALE } = useDistricts();
 
-    // Используем хуки для городов
-    const { error, createCityPointsLayer, getCitiesForDistrict, getCitiesForRegion, resetCityPoints } = useCombinedCityData();
+    const { createCityPointsLayer, getCitiesForDistrict, getCitiesForRegion, resetCityPoints } = useCombinedCityData();
     const [currentCities, setCurrentCities] = useState(null);
-    // const [selectedCityInDistrict, setSelectedCityInDistrict] = useState(null);
 
-
-    const [clickedCity, setClickedCity] = useState(null); // <---- НОВОЕ СОСТОЯНИЕ clickedCity и setClickedCity
+    const [clickedCity, setClickedCity] = useState(null);
 
     useEffect(() => {
         if (selectedDistrictCity) {
@@ -72,11 +56,8 @@ const BavariaMapThree = () => {
     }, [selectedRegionCity, getCitiesForRegion]);
 
     useEffect(() => {
-        // console.log("Clicked city updated:", clickedCity); // Логируем обновление clickedCity
     }, [clickedCity]);
 
-
-    // Обработчик выбора региона
     const handleRegionClick = (object) => {
         setSelectedRegion(object);
         setSelectedRegionInfo(object); // Update selectedRegionInfo state with clicked region object
@@ -87,7 +68,6 @@ const BavariaMapThree = () => {
         resetCityPoints();
     };
 
-    // Обработчик сброса выбора
     const handleResetSelection = () => {
         setSelectedRegion(null);
         setSelectedDistrict(null);
@@ -95,18 +75,15 @@ const BavariaMapThree = () => {
         setSelectedDistrictCity(null);
         setSelectedDistrictCityInfo(null);
         setSelectedRegionCity(null);
-        // setSelectedCityInDistrict(null)
         resetDistrictsData(); //null
         resetCityPoints(); // сбрасываем точки городов
     };
 
-    // Обработчик выбора района или города
     const handleDistrictClick = (object) => {
         setSelectedDistrict(object);
         setSelectedDistrictCity(object);
         setSelectedDistrictCityInfo(object); // Update selectedDistrictCityInfo state with clicked district/city object
         setClickedCity(object)
-        // setSelectedCityInDistrict =()
     };
 
     if (isLoading) {
@@ -117,14 +94,11 @@ const BavariaMapThree = () => {
         );
     };
 
-
     const cityLayer = selectedRegionCity && currentCities // Меняем на selectedDistrictCity если хотим получить только города в районе
         ? createCityPointsLayer(null, null, clickedCity)
         : null;
-    // console.log(`selected current City in Layer define `, clickedCity);
 
     const renderLayers = () => {
-        // console.log("Selected Region before CitiesHandler condition:", selectedRegion);
         const layers = [
             createGlowLayer(10, 0.1, 'outer'),
             createGlowLayer(5, 0.2, 'middle'),
@@ -134,10 +108,8 @@ const BavariaMapThree = () => {
             createRegionsTextLayer(regionsWithCentroids),
             cityLayer
         ].filter(Boolean);
-        // console.log("Layers array (Region + Districts):", layers);
         return layers;
     };
-    // console.log(`createRegionsTextLayer`, regionsData);
 
     function getTooltip({ object }) {
         if (!object) return null;
@@ -164,19 +136,15 @@ const BavariaMapThree = () => {
                 getTooltip={getTooltip}
                 onClick={({ object, layer }) => {
                     if (object) {
-                        // console.log("onClick: Object properties:", object.properties);
-                        // console.log("onClick: Clicked layer id:", layer.id);
 
                         if (layer.id === 'regions') {
                             handleRegionClick(object);
                         } else if (layer.id === 'districts') {
                             handleDistrictClick(object);
-                        } else if (layer.id === 'city-points') { // <---- ИСПРАВЛЕНО условие: layer.id === 'city-points' 
+                        } else if (layer.id === 'city-points') {
                             setClickedCity(object);
                             setSelectedDistrictCityInfo(object);
-                            // console.log("onClick: City Object properties:", object.properties);
                         } else {
-                            // console.log("onClick: Unknown layer clicked:", layer.id);
                             handleRegionClick(object);
                         }
                     } else {
@@ -186,10 +154,8 @@ const BavariaMapThree = () => {
                 onHover={({ object }) => {
                     if (object) {
                         if (selectedRegion) {
-                            // Подсветка районов и городов
                             setHoveredDistrict(object);
                         } else {
-                            // Подсветка регионов
                             setHoveredRegion(object);
                         }
                     } else {
