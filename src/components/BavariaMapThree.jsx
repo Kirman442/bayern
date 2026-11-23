@@ -9,10 +9,15 @@ import { cityKey, selectionFromHash, selectionReducer, selectionToHash } from '.
 import {
     boundaryGlowLayers,
     cityPointsLayer,
+    districtLabelsLayer,
     districtsLayer,
+    placeLabelsLayer,
     regionLabelsLayer,
     regionsLayer,
 } from '../map/layers';
+
+// Created once: the tile cache survives re-renders.
+const PLACE_LABELS = placeLabelsLayer();
 
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/positron-nolabels-gl-style/style.json';
 
@@ -143,11 +148,17 @@ const BavariaMapThree = () => {
         () => districtsLayer(regionDistricts, districtId),
         [regionDistricts, districtId]
     );
+    const districtNamesLayer = useMemo(
+        () => districtLabelsLayer(regionDistricts, districtId),
+        [regionDistricts, districtId]
+    );
     const citiesLayer = useMemo(
         () => cityPointsLayer(visibleCities, selectedCityKey),
         [visibleCities, selectedCityKey]
     );
-    const layers = [...glowLayers, regionLayer, districtLayer, labelsLayer, citiesLayer].filter(Boolean);
+    const layers = [
+        ...glowLayers, regionLayer, districtLayer, PLACE_LABELS, labelsLayer, citiesLayer, districtNamesLayer,
+    ].filter(Boolean);
 
     const handleClick = useCallback(({ object, layer }) => {
         if (!object) {

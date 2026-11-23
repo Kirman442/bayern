@@ -1,4 +1,6 @@
-import { GeoJsonLayer, ScatterplotLayer, TextLayer } from '@deck.gl/layers';
+import { BitmapLayer, GeoJsonLayer, ScatterplotLayer, TextLayer } from '@deck.gl/layers';
+import { TileLayer } from '@deck.gl/geo-layers';
+import { CollisionFilterExtension } from '@deck.gl/extensions';
 import { cityKey } from './selection';
 import { CITY_COLOR_SCALE, CITY_RADIUS_SCALE, DENSITY_COLOR_SCALE, density } from './scales';
 
@@ -6,6 +8,7 @@ import { CITY_COLOR_SCALE, CITY_RADIUS_SCALE, DENSITY_COLOR_SCALE, density } fro
 const HOVER_COLOR = [254, 196, 79, 255];
 const SELECTED_COLOR = [253, 141, 60, 255];
 const CITY_OUTLINE = [45, 45, 60, 220];
+const LABEL_FONT = 'system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
 
 // Soft shadow around the border of Bavaria, drawn as three lines of decreasing width.
 export function boundaryGlowLayers(boundary) {
@@ -50,7 +53,8 @@ export function regionsLayer(regions, selectedRegionId) {
         getLineWidth: 1.5,
         // Once a Bezirk is chosen its districts carry the colour; every Bezirk steps back into
         // a light neutral (under the districts it only shows in slivers along the borders).
-        getFillColor: selectedRegionId ? [236, 238, 242, 200] : [65, 182, 230, 200],
+        // Overview: Bezirke on the same density scale as the Landkreise and the legend.
+        getFillColor: d => selectedRegionId ? [236, 238, 242, 200] : DENSITY_COLOR_SCALE(density(d)),
         getLineColor: [255, 255, 255, 230],
         updateTriggers: {
             getFillColor: [selectedRegionId],
@@ -67,7 +71,7 @@ export function regionLabelsLayer(regions, selectedRegionId) {
         getText: d => d.properties.name,
         getSize: 15,
         getColor: d => d.properties.id === selectedRegionId ? [0, 0, 0, 0] : [40, 44, 70, 255],
-        fontFamily: 'system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+        fontFamily: LABEL_FONT,
         fontWeight: 600,
         // A light plate behind the name reads on every fill; an SDF outline smeared the glyphs.
         background: true,
@@ -83,6 +87,59 @@ export function regionLabelsLayer(regions, selectedRegionId) {
             getColor: [selectedRegionId],
             getBackgroundColor: [selectedRegionId],
         }
+    });
+}
+
+// Names of the Landkreise and kreisfreie Städte of the selected Bezirk. Labels that would
+// overlap are dropped, the more populous district wins; kreisfreie Städte are set darker.
+export function districtLabelsLayer(districts, selectedDistrictId) {
+    if (districts.length === 0) return null;
+    return new TextLayer({
+        id: 'district-labels',
+        data: districts,
+        getPosition: d => d.centroid,
+        getText: d => d.properties.shortName,
+        getSize: d => (d.properties.kind === 'stadt' ? 13 : 12),
+        getColor: d => d.properties.kind === 'stadt' ? [20, 24, 50, 255] : [55, 60, 80, 235],
+        fontFamily: LABEL_FONT,
+        fontWeight: 600,
+        background: true,
+        getBackgroundColor: d => d.properties.id === selectedDistrictId
+            ? [255, 236, 214, 235]
+            : [255, 255, 255, 190],
+        backgroundPadding: [4, 1],
+        characterSet: 'auto',
+        getTextAnchor: 'middle',
+        getAlignmentBaseline: 'center',
+        extensions: [new CollisionFilterExtension()],
+        // deck.gl wants priorities in [-1000, 1000]: 100 · log10(population) is about 450–700.
+        getCollisionPriority: d => Math.round(100 * Math.log10(d.properties.population)),
+        collisionTestProps: { sizeScale: 1.6 },
+        parameters: { depthTest: false },
+        updateTriggers: { getBackgroundColor: [selectedDistrictId] },
+    });
+}
+
+// Place and river names from Carto's label-only raster tiles, drawn above the polygons so
+// they stay readable; the vector basemap underneath has no labels.
+export function placeLabelsLayer() {
+    return new TileLayer({
+        id: 'place-labels',
+        data: 'https://basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}@2x.png',
+        minZoom: 0,
+        maxZoom: 18,
+        tileSize: 256,
+        opacity: 0.9,
+        pickable: false,
+        renderSubLayers: props => {
+            const { boundingBox } = props.tile;
+            return new BitmapLayer(props, {
+                data: null,
+                image: props.data,
+                bounds: [boundingBox[0][0], boundingBox[0][1], boundingBox[1][0], boundingBox[1][1]],
+                parameters: { depthTest: false },
+            });
+        },
     });
 }
 

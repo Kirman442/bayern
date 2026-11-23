@@ -13,12 +13,17 @@ async function loadJson(url, signal) {
 }
 
 // Landkreise and kreisfreie Städte share one layer; `kind` in the data tells them apart.
+// The map labels use the short name, the panel and tooltips the full one.
 function withDisplayNames(districts) {
     return districts.features.map(f => {
         const prefix = f.properties.kind === 'landkreis'
             ? 'Landkreis'
             : f.properties.id === MUNICH_ID ? 'Landeshauptstadt' : 'Kreisfreie Stadt';
-        return { ...f, properties: { ...f.properties, name: `${prefix} ${f.properties.name}` } };
+        return {
+            ...f,
+            centroid: centroid(f).geometry.coordinates,
+            properties: { ...f.properties, shortName: f.properties.name, name: `${prefix} ${f.properties.name}` },
+        };
     });
 }
 
