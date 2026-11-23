@@ -62,19 +62,28 @@ export function regionsLayer(regions, selectedRegionId) {
     });
 }
 
-export function regionLabelsLayer(regions) {
+// Bezirk names; the selected Bezirk's name is hidden so it doesn't sit on its districts.
+export function regionLabelsLayer(regions, selectedRegionId) {
     return new TextLayer({
         id: 'regions-labels',
         data: regions,
         getPosition: d => d.centroid,
         getText: d => d.properties.name,
-        getSize: 16,
-        getColor: [255, 255, 255, 100],
-        getAngle: 0,
+        getSize: 15,
+        getColor: d => d.properties.id === selectedRegionId ? [0, 0, 0, 0] : [40, 44, 70, 230],
+        fontFamily: 'system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+        fontWeight: 600,
+        fontSettings: { sdf: true },
+        outlineWidth: 4,
+        outlineColor: [255, 255, 255, 220],
+        characterSet: 'auto',
         getTextAnchor: 'middle',
         getAlignmentBaseline: 'center',
         parameters: {
             depthTest: false
+        },
+        updateTriggers: {
+            getColor: [selectedRegionId]
         }
     });
 }
@@ -96,7 +105,7 @@ export function districtsLayer(districts, selectedDistrictId) {
             const isStadt = d.properties.kind === 'stadt';
             const isSelected = d.properties.id === selectedDistrictId;
             if (isStadt) return density(d) * (isSelected ? 5 : 3);
-            return density(d) * (isSelected ? 65 : 20);
+            return density(d) * (isSelected ? 35 : 20);
         },
         getFillColor: d => {
             if (d.properties.id === selectedDistrictId) return SELECTED_COLOR;

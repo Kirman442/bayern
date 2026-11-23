@@ -1,10 +1,11 @@
-import { useCallback, useMemo, useReducer, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
 import DeckGL from '@deck.gl/react';
 import { Map } from '@vis.gl/react-maplibre';
 import SidePanel from './SidePanel';
-import { formatArea, formatPeople } from '../map/format';
+import { formatArea, formatDensity, formatPeople } from '../map/format';
+import { boundsOf, viewStateFor } from '../map/camera';
 import useBavariaData from '../map/useBavariaData';
-import { cityKey, initialSelection, selectionReducer } from '../map/selection';
+import { cityKey, selectionFromHash, selectionReducer, selectionToHash } from '../map/selection';
 import {
     boundaryGlowLayers,
     cityPointsLayer,
@@ -15,36 +16,71 @@ import {
 
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/positron-nolabels-gl-style/style.json';
 
-const INITIAL_VIEW_STATE = {
-    longitude: 11.4,
-    latitude: 48.5,
-    zoom: 7,
-    maxZoom: 10,
-    minZoom: 6,
-    pitch: 33,
-    bearing: 0
-};
+// Phones get the panel as a sheet at the bottom; see .control-panel in index.css.
+const MOBILE_BREAKPOINT = 640;
+const PANEL_WIDTH = 390;
+
+function useWindowSize() {
+    const [size, setSize] = useState({ width: window.innerWidth, height: window.innerHeight });
+    useEffect(() => {
+        const onResize = () => setSize({ width: window.innerWidth, height: window.innerHeight });
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+    }, []);
+    return size;
+}
+
+// Space around the fitted area: keep it clear of the panel.
+function cameraPadding({ width, height }) {
+    if (width <= MOBILE_BREAKPOINT) {
+        return { top: 20, left: 20, right: 20, bottom: Math.round(height * 0.45) + 20 };
+    }
+    return { top: 40, left: 40, bottom: 40, right: Math.min(PANEL_WIDTH, width / 2) + 40 };
+}
 
 const regionCode = (id) => id.slice(0, 3);
 
-function getTooltip({ object }) {
-    if (!object?.properties?.['land-id']) return null;
+function getTooltip({ object, layer }) {
+    if (!object?.properties) return null;
     const p = object.properties;
+    const title = layer.id === 'city-points' ? 'Stadt / Gemeinde'
+        : layer.id === 'regions' ? 'Bezirk'
+            : p.kind === 'stadt' ? 'Kreisfreie Stadt' : 'Landkreis';
     return {
         html: `
-            <div><b>Stadt / Gemeinde</b></div>
+            <div><b>${title}</b></div>
             <div><b>Name:</b> ${p.name}</div>
             <div><b>Bevölkerung:</b> ${formatPeople(p.population)}</div>
             <div><b>Fläche:</b> ${formatArea(p.area)}</div>
+            <div><b>Dichte:</b> ${formatDensity(p)}</div>
         `
     };
 }
 
 const BavariaMapThree = () => {
     const data = useBavariaData();
-    const [selection, dispatch] = useReducer(selectionReducer, initialSelection);
+    const [selection, dispatch] = useReducer(selectionReducer, window.location.hash, selectionFromHash);
     const [hoveredRegionId, setHoveredRegionId] = useState(null);
     const { regionId, districtId, cityKey: selectedCityKey } = selection;
+    const windowSize = useWindowSize();
+
+    // Esc goes one level up, like a click on an empty part of the map.
+    useEffect(() => {
+        const onKeyDown = (e) => {
+            if (e.key === 'Escape') dispatch({ type: 'back' });
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, []);
+
+    // Keep the URL hash in sync with the selection (replaceState: no history entry per click).
+    useEffect(() => {
+        const hash = selectionToHash(selection);
+        if (hash !== window.location.hash) {
+            const { pathname, search } = window.location;
+            window.history.replaceState(null, '', `${pathname}${search}${hash}`);
+        }
+    }, [selection]);
 
     // Everything the map and the panel show is derived from the selected ids.
     const region = useMemo(
@@ -75,6 +111,13 @@ const BavariaMapThree = () => {
         () => visibleCities.find(c => cityKey(c) === selectedCityKey) ?? null,
         [visibleCities, selectedCityKey]
     );
+    // The camera flies to the selected Landkreis or Bezirk, or shows all of Bavaria.
+    const viewState = useMemo(() => {
+        const focus = district ? [district] : region ? [region] : data.regions;
+        if (!focus) return null;
+        return viewStateFor(boundsOf(focus), { ...windowSize, padding: cameraPadding(windowSize) });
+    }, [district, region, data.regions, windowSize]);
+
     const hoveredRegion = useMemo(
         () => data.regions?.find(r => r.properties.id === hoveredRegionId) ?? null,
         [data.regions, hoveredRegionId]
@@ -86,7 +129,10 @@ const BavariaMapThree = () => {
         () => data.regions && regionsLayer(data.regions, regionId),
         [data.regions, regionId]
     );
-    const labelsLayer = useMemo(() => data.regions && regionLabelsLayer(data.regions), [data.regions]);
+    const labelsLayer = useMemo(
+        () => data.regions && regionLabelsLayer(data.regions, regionId),
+        [data.regions, regionId]
+    );
     const districtLayer = useMemo(
         () => districtsLayer(regionDistricts, districtId),
         [regionDistricts, districtId]
@@ -99,7 +145,7 @@ const BavariaMapThree = () => {
 
     const handleClick = useCallback(({ object, layer }) => {
         if (!object) {
-            dispatch({ type: 'reset' });
+            dispatch({ type: 'back' });
             return;
         }
         if (layer.id === 'regions') {
@@ -125,7 +171,7 @@ const BavariaMapThree = () => {
         );
     }
 
-    if (!data.regions) {
+    if (!viewState) {
         return (
             <div className="flex items-center justify-center h-screen">
                 <div className="text-lg">Daten werden geladen…</div>
@@ -134,10 +180,10 @@ const BavariaMapThree = () => {
     }
 
     return (
-        <div style={{ width: '800px', height: '600px' }} >
+        <div className="map-root">
             <DeckGL
                 layers={layers}
-                initialViewState={INITIAL_VIEW_STATE}
+                initialViewState={viewState}
                 controller={true}
                 getTooltip={getTooltip}
                 onClick={handleClick}

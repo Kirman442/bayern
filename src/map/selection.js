@@ -16,9 +16,14 @@ export function selectionReducer(state, action) {
         case 'selectRegion':
             return { ...initialSelection, regionId: action.id };
         case 'selectDistrict':
-            return { ...state, districtId: action.id, cityKey: null };
+            return { ...state, districtId: action.id, cityKey: null, tab: 'districts' };
         case 'selectCity':
-            return { ...state, cityKey: action.key };
+            return { ...state, cityKey: action.key, tab: 'districts' };
+        case 'back':
+            // One level up: Gemeinde → Landkreis → Bezirk → whole Bavaria.
+            if (state.cityKey) return { ...state, cityKey: null };
+            if (state.districtId) return { ...state, districtId: null };
+            return initialSelection;
         case 'setTab':
             return state.regionId ? { ...state, tab: action.tab } : state;
         case 'reset':
@@ -26,4 +31,31 @@ export function selectionReducer(state, action) {
         default:
             throw new Error(`Unknown selection action: ${action.type}`);
     }
+}
+
+// The selection is mirrored in the URL hash (#bezirk=091&kreis=09171&gemeinde=…),
+// so a view can be shared or bookmarked.
+const HASH_KEYS = { regionId: 'bezirk', districtId: 'kreis', cityKey: 'gemeinde' };
+
+export function selectionFromHash(hash) {
+    const params = new URLSearchParams(hash.replace(/^#/, ''));
+    const regionId = params.get(HASH_KEYS.regionId);
+    if (!regionId) return initialSelection;
+    const districtId = params.get(HASH_KEYS.districtId);
+    const key = params.get(HASH_KEYS.cityKey);
+    return {
+        regionId,
+        districtId: districtId || null,
+        cityKey: key || null,
+        tab: districtId || key ? 'districts' : 'regions',
+    };
+}
+
+export function selectionToHash(selection) {
+    const params = new URLSearchParams();
+    for (const [field, name] of Object.entries(HASH_KEYS)) {
+        if (selection[field]) params.set(name, selection[field]);
+    }
+    const s = params.toString();
+    return s ? `#${s}` : '';
 }
