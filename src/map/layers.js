@@ -7,10 +7,6 @@ const HOVER_COLOR = [254, 196, 79, 255];
 const SELECTED_COLOR = [253, 141, 60, 255];
 const CITY_OUTLINE = [45, 45, 60, 220];
 
-// Brighter than deck.gl's default lighting, so the extruded colours keep matching the legend
-// instead of turning murky on the shaded sides.
-const MATERIAL = { ambient: 0.65, diffuse: 0.45, shininess: 16, specularColor: [40, 40, 40] };
-
 // Soft shadow around the border of Bavaria, drawn as three lines of decreasing width.
 export function boundaryGlowLayers(boundary) {
     if (!boundary) return [];
@@ -40,7 +36,6 @@ export function boundaryGlowLayers(boundary) {
 }
 
 export function regionsLayer(regions, selectedRegionId) {
-    const isSelected = (d) => d.properties.id === selectedRegionId;
     return new GeoJsonLayer({
         id: 'regions',
         data: regions,
@@ -48,24 +43,17 @@ export function regionsLayer(regions, selectedRegionId) {
         // Hover highlight only before a Bezirk is chosen; afterwards the districts are the target.
         autoHighlight: !selectedRegionId,
         highlightColor: HOVER_COLOR,
-        stroked: false,
+        // Flat polygons: density is shown by colour alone, nothing hides behind a raised Bezirk.
+        stroked: true,
         filled: true,
-        extruded: true,
-        material: MATERIAL,
-        lineWidthScale: 1,
-        wireframe: true,
-        lineWidthMinPixels: 1,
-        getFillColor: d => {
-            if (isSelected(d)) return [100, 150, 255, 200];
-            // Other Bezirke step back into a light neutral, so the chosen one carries the colour.
-            if (selectedRegionId) return [236, 238, 242, 200];
-            return [65, 182, 230, 200];
-        },
-        getLineColor: [255, 255, 230, 20],
-        getElevation: d => (selectedRegionId && !isSelected(d) ? 0 : density(d) * 5),
+        lineWidthUnits: 'pixels',
+        getLineWidth: 1.5,
+        // Once a Bezirk is chosen its districts carry the colour; every Bezirk steps back into
+        // a light neutral (under the districts it only shows in slivers along the borders).
+        getFillColor: selectedRegionId ? [236, 238, 242, 200] : [65, 182, 230, 200],
+        getLineColor: [255, 255, 255, 230],
         updateTriggers: {
             getFillColor: [selectedRegionId],
-            getElevation: [selectedRegionId],
         }
     });
 }
@@ -109,27 +97,18 @@ export function districtsLayer(districts, selectedDistrictId) {
         highlightColor: HOVER_COLOR,
         stroked: true,
         filled: true,
-        extruded: true,
-        material: MATERIAL,
-        wireframe: true,
-        getElevation: d => {
-            const isStadt = d.properties.kind === 'stadt';
-            const isSelected = d.properties.id === selectedDistrictId;
-            if (isStadt) return density(d) * (isSelected ? 5 : 3);
-            return density(d) * (isSelected ? 35 : 20);
-        },
         getFillColor: d => {
             if (d.properties.id === selectedDistrictId) return SELECTED_COLOR;
             return DENSITY_COLOR_SCALE(density(d));
         },
-        getLineColor: [255, 255, 255, 50],
-        lineWidthMinPixels: 1,
-        transitions: {
-            getElevation: 500,
-        },
+        // White borders between neighbours; the selected one gets a dark, wider outline.
+        lineWidthUnits: 'pixels',
+        getLineColor: d => d.properties.id === selectedDistrictId ? [60, 30, 10, 255] : [255, 255, 255, 220],
+        getLineWidth: d => d.properties.id === selectedDistrictId ? 2.5 : 1,
         updateTriggers: {
             getFillColor: [selectedDistrictId],
-            getElevation: [selectedDistrictId]
+            getLineColor: [selectedDistrictId],
+            getLineWidth: [selectedDistrictId],
         }
     });
 }

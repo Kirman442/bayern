@@ -47,6 +47,8 @@ function getTooltip({ object, layer }) {
         : layer.id === 'regions' ? 'Bezirk'
             : p.kind === 'stadt' ? 'Kreisfreie Stadt' : 'Landkreis';
     return {
+        // deck.gl puts the tooltip's corner on the pointer tip; move it clear of the cursor.
+        style: { marginLeft: '16px', marginTop: '18px' },
         html: `
             <div><b>${title}</b></div>
             <div><b>Name:</b> ${p.name}</div>
