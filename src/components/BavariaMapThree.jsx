@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
-import DeckGL from '@deck.gl/react';
-import { Map } from '@vis.gl/react-maplibre';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { MapboxOverlay } from '@deck.gl/mapbox';
+import { Map, useControl } from '@vis.gl/react-maplibre';
 import SidePanel from './SidePanel';
 import { formatArea, formatDensity, formatPeople } from '../map/format';
-import { boundsOf, viewStateFor } from '../map/camera';
+import { MAX_ZOOM, MIN_ZOOM, boundsOf, viewStateFor } from '../map/camera';
 import useBavariaData from '../map/useBavariaData';
 import { cityKey, selectionFromHash, selectionReducer, selectionToHash } from '../map/selection';
 import {
@@ -15,7 +15,20 @@ import {
     regionsLayer,
 } from '../map/layers';
 
-const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/positron-nolabels-gl-style/style.json';
+// Carto Positron vector style (no API key). deck.gl draws into MapLibre's own WebGL context
+// (interleaved), so the polygons can sit below the basemap's place and river names.
+const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
+
+function DeckOverlay(props) {
+    const overlay = useControl(() => new MapboxOverlay({ ...props, interleaved: true }));
+    overlay.setProps(props);
+    return null;
+}
+
+// The first symbol layer of the style: map polygons go below it, our own labels above.
+function firstLabelLayerId(map) {
+    return map.getStyle().layers.find(l => l.type === 'symbol')?.id ?? null;
+}
 
 // Phones get the panel as a sheet at the bottom; see .control-panel in index.css.
 const MOBILE_BREAKPOINT = 640;
@@ -41,28 +54,22 @@ function cameraPadding({ width, height }) {
 
 const regionCode = (id) => id.slice(0, 3);
 
-function getTooltip({ object, layer }) {
-    if (!object?.properties) return null;
-    const p = object.properties;
-    const title = layer.id === 'city-points' ? 'Stadt / Gemeinde'
-        : layer.id === 'regions' ? 'Bezirk'
+// Hover card for any map object; drawn by React next to the pointer.
+function MapTooltip({ info }) {
+    const p = info.object.properties;
+    const title = info.layerId === 'city-points' ? 'Stadt / Gemeinde'
+        : info.layerId === 'regions' ? 'Bezirk'
             : p.kind === 'stadt' ? 'Kreisfreie Stadt' : 'Landkreis';
-    return {
-        // deck.gl puts the tooltip's corner on the pointer tip; move it clear of the cursor.
-        style: { marginLeft: '16px', marginTop: '18px' },
-        html: `
-            <div><b>${title}</b></div>
-            <div><b>Name:</b> ${p.name}</div>
-            <div><b>Bevölkerung:</b> ${formatPeople(p.population)}</div>
-            <div><b>Fläche:</b> ${formatArea(p.area)}</div>
-            <div><b>Dichte:</b> ${formatDensity(p)}</div>
-        `
-    };
+    return (
+        <div className="map-tooltip" style={{ left: info.x + 16, top: info.y + 18 }}>
+            <div><b>{title}</b></div>
+            <div><b>Name:</b> {p.name}</div>
+            <div><b>Bevölkerung:</b> {formatPeople(p.population)}</div>
+            <div><b>Fläche:</b> {formatArea(p.area)}</div>
+            <div><b>Dichte:</b> {formatDensity(p)}</div>
+        </div>
+    );
 }
-
-// A hand over everything clickable, the usual grab cursor elsewhere.
-const getCursor = ({ isHovering, isDragging }) =>
-    isDragging ? 'grabbing' : isHovering ? 'pointer' : 'grab';
 
 const BavariaMapThree = () => {
     const data = useBavariaData();
@@ -152,9 +159,26 @@ const BavariaMapThree = () => {
         () => cityPointsLayer(visibleCities, selectedCityKey),
         [visibleCities, selectedCityKey]
     );
-    const layers = [
-        ...glowLayers, regionLayer, districtLayer, labelsLayer, citiesLayer, districtNamesLayer,
-    ].filter(Boolean);
+    const [beforeId, setBeforeId] = useState(null);
+    const layers = useMemo(() => {
+        const under = [...glowLayers, regionLayer, districtLayer].filter(Boolean)
+            .map(l => (beforeId ? l.clone({ beforeId }) : l));
+        const over = [labelsLayer, citiesLayer, districtNamesLayer].filter(Boolean);
+        return [...under, ...over];
+    }, [glowLayers, regionLayer, districtLayer, labelsLayer, citiesLayer, districtNamesLayer, beforeId]);
+
+    // The camera follows the selection: fly to every new target after the first one.
+    const mapRef = useRef(null);
+    // The Map is mounted only once data has loaded, so the first non-null target is its start.
+    const initialViewState = useRef(null);
+    if (!initialViewState.current && viewState) initialViewState.current = viewState;
+    const [mapLoaded, setMapLoaded] = useState(false);
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !mapLoaded || !viewState) return;
+        const { longitude, latitude, zoom, pitch, bearing } = viewState;
+        map.flyTo({ center: [longitude, latitude], zoom, pitch, bearing, duration: 800 });
+    }, [viewState, mapLoaded]);
 
     const handleClick = useCallback(({ object, layer }) => {
         if (!object) {
@@ -171,10 +195,15 @@ const BavariaMapThree = () => {
     }, []);
 
     // The panel shows the Bezirk under the cursor until one is selected.
-    const handleHover = useCallback(({ object, layer }) => {
+    const [hoverInfo, setHoverInfo] = useState(null);
+    const handleHover = useCallback(({ object, layer, x, y }) => {
+        setHoverInfo(object?.properties ? { object, layerId: layer.id, x, y } : null);
         // deck.gl can report the layer without an object (e.g. when the pointer leaves it).
         const id = !regionId && layer?.id === 'regions' ? object?.properties?.id ?? null : null;
         setHoveredRegionId(prev => (prev === id ? prev : id));
+        // A hand over everything clickable; MapLibre shows its grab cursor elsewhere.
+        const canvas = mapRef.current?.getCanvas();
+        if (canvas) canvas.style.cursor = object ? 'pointer' : '';
     }, [regionId]);
 
     if (data.error && !data.regions) {
@@ -195,17 +224,24 @@ const BavariaMapThree = () => {
 
     return (
         <div className="map-root">
-            <DeckGL
-                layers={layers}
-                initialViewState={viewState}
-                controller={true}
-                getTooltip={getTooltip}
-                getCursor={getCursor}
-                onClick={handleClick}
-                onHover={handleHover}
+            <Map
+                ref={mapRef}
+                mapStyle={MAP_STYLE}
+                initialViewState={initialViewState.current}
+                minZoom={MIN_ZOOM}
+                maxZoom={MAX_ZOOM}
+                onLoad={(e) => {
+                    setBeforeId(firstLabelLayerId(e.target));
+                    setMapLoaded(true);
+                }}
             >
-                <Map mapStyle={MAP_STYLE} />
-            </DeckGL>
+                <DeckOverlay
+                    layers={layers}
+                    onClick={handleClick}
+                    onHover={handleHover}
+                />
+            </Map>
+            {hoverInfo && <MapTooltip info={hoverInfo} />}
             <SidePanel
                 selection={selection}
                 dispatch={dispatch}

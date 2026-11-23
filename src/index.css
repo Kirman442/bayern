@@ -57,3 +57,20 @@ body {
   overflow-y: auto;
   padding-right: 8px;
 }
+
+.map-tooltip {
+    position: absolute;
+    z-index: 2;
+    pointer-events: none;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: rgb(41, 50, 60);
+    color: rgb(200, 205, 215);
+    font-size: 13px;
+    line-height: 1.45;
+    white-space: nowrap;
+}
+
+.map-tooltip b {
+    color: #fff;
+}
