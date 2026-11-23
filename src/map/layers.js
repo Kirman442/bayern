@@ -1,5 +1,4 @@
-import { BitmapLayer, GeoJsonLayer, ScatterplotLayer, TextLayer } from '@deck.gl/layers';
-import { TileLayer } from '@deck.gl/geo-layers';
+import { GeoJsonLayer, ScatterplotLayer, TextLayer } from '@deck.gl/layers';
 import { CollisionFilterExtension } from '@deck.gl/extensions';
 import { cityKey } from './selection';
 import { CITY_COLOR_SCALE, CITY_RADIUS_SCALE, DENSITY_COLOR_SCALE, density } from './scales';
@@ -117,29 +116,6 @@ export function districtLabelsLayer(districts, selectedDistrictId) {
         collisionTestProps: { sizeScale: 1.6 },
         parameters: { depthTest: false },
         updateTriggers: { getBackgroundColor: [selectedDistrictId] },
-    });
-}
-
-// Place and river names from Carto's label-only raster tiles, drawn above the polygons so
-// they stay readable; the vector basemap underneath has no labels.
-export function placeLabelsLayer() {
-    return new TileLayer({
-        id: 'place-labels',
-        data: 'https://basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}@2x.png',
-        minZoom: 0,
-        maxZoom: 18,
-        tileSize: 256,
-        opacity: 0.9,
-        pickable: false,
-        renderSubLayers: props => {
-            const { boundingBox } = props.tile;
-            return new BitmapLayer(props, {
-                data: null,
-                image: props.data,
-                bounds: [boundingBox[0][0], boundingBox[0][1], boundingBox[1][0], boundingBox[1][1]],
-                parameters: { depthTest: false },
-            });
-        },
     });
 }
 

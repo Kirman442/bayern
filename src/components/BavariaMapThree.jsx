@@ -11,13 +11,9 @@ import {
     cityPointsLayer,
     districtLabelsLayer,
     districtsLayer,
-    placeLabelsLayer,
     regionLabelsLayer,
     regionsLayer,
 } from '../map/layers';
-
-// Created once: the tile cache survives re-renders.
-const PLACE_LABELS = placeLabelsLayer();
 
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/positron-nolabels-gl-style/style.json';
 
@@ -157,7 +153,7 @@ const BavariaMapThree = () => {
         [visibleCities, selectedCityKey]
     );
     const layers = [
-        ...glowLayers, regionLayer, districtLayer, PLACE_LABELS, labelsLayer, citiesLayer, districtNamesLayer,
+        ...glowLayers, regionLayer, districtLayer, labelsLayer, citiesLayer, districtNamesLayer,
     ].filter(Boolean);
 
     const handleClick = useCallback(({ object, layer }) => {
