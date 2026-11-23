@@ -1,50 +1,42 @@
-import { Fragment } from 'react';
+import { DENSITY_COLOR_SCALE } from '../map/scales';
+import { formatInt } from '../map/format';
 
-const ColorLegend = ({ colorScale }) => {
-    const domain = colorScale.domain(); // Получаем домены (пороговые значения) из цветовой шкалы
-    const range = colorScale.range();   // Получаем цвета из цветовой шкалы
-    const legendHeight = 10;           // Высота линии легенды
-    const legendWidth = 250;            // Ширина легенды (можно настроить)
-    const segmentWidth = legendWidth / range.length; // Ширина сегмента цветовой линии
+const WIDTH = 250;
+const BAR_HEIGHT = 10;
+
+// Classes of the density scale used for the Landkreise and kreisfreie Städte.
+const ColorLegend = () => {
+    const thresholds = DENSITY_COLOR_SCALE.domain();
+    const colors = DENSITY_COLOR_SCALE.range();
+    const segment = WIDTH / colors.length;
 
     return (
-        <div style={{ width: legendWidth, margin: '10px' }}> {/* Контейнер для легенды */}
-            <div style={{ fontSize: '12px', textAlign: 'center', marginBottom: '10px' }}>
-                Fläche der Landkreise, km² {/* Заголовок легенды - можно изменить */}
+        <div style={{ width: WIDTH, margin: '10px' }}>
+            <div style={{ fontSize: '12px', textAlign: 'center', marginBottom: '6px' }}>
+                Bevölkerungsdichte, Einw./km²
             </div>
-            <svg width={legendWidth} height={legendHeight + 20}>
-                {range.map((color, index) => { // Перебираем цвета из цветовой шкалы
-                    const xStart = index * segmentWidth; // Начало X-координаты для сегмента
-                    const labelText = index === 0 ? `< ${domain[0]}` : `${domain[index]}`;
-
-                    return (
-                        <Fragment key={index}> {/* Fragment чтобы не создавать лишний DOM-элемент */}
-                            <rect // Рисуем цветной прямоугольник (сегмент легенды)
-                                x={xStart}
-                                y={0}
-                                width={segmentWidth}
-                                height={legendHeight}
-                                fill={`rgba(${color.join(',')})`} // Заполняем цветом из палитры
-                            />
-                            <text // Добавляем текстовую подпись под сегментом
-                                x={xStart + segmentWidth / 2} // Центрируем текст по горизонтали
-                                y={legendHeight + 15}        // Позиционируем текст ниже линии
-                                textAnchor="middle"           // Выравнивание текста по центру
-                                style={{ fontSize: '10px' }}   // Размер шрифта (можно настроить)
-                            >
-                                {labelText}
-                            </text>
-                        </Fragment>
-                    );
-                })}
-                <text
-                    x={legendWidth} // X координата - в конце легенды
-                    y={legendHeight + 15}
-                    textAnchor="end" // Выравнивание текста по правому краю
-                    style={{ fontSize: '10px' }}
-                >
-                    {/* ≥ {domain[domain.length - 1]} */}
-                </text>
+            <svg width={WIDTH} height={BAR_HEIGHT + 18} style={{ overflow: 'visible' }}>
+                {colors.map((color, i) => (
+                    <rect
+                        key={i}
+                        x={i * segment}
+                        y={0}
+                        width={segment}
+                        height={BAR_HEIGHT}
+                        fill={`rgb(${color.slice(0, 3).join(',')})`}
+                    />
+                ))}
+                {thresholds.map((value, i) => (
+                    <text
+                        key={value}
+                        x={(i + 1) * segment}
+                        y={BAR_HEIGHT + 13}
+                        textAnchor="middle"
+                        style={{ fontSize: '10px' }}
+                    >
+                        {formatInt(value)}
+                    </text>
+                ))}
             </svg>
         </div>
     );

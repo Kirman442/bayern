@@ -1,14 +1,16 @@
+import { formatArea, formatDensity, formatPeople } from '../map/format';
+
 const CityDetails = ({ city }) => {
     if (!city) return null;
 
     return (
         <div className="mb-2 p-3 bg-blue-100 rounded">
             <h3 className="text-lg font-semibold">{city.properties.name}</h3>
-            <p className="text-base">Fläche: {city.properties.area.toFixed(2)} km²</p>
-            <p className="text-base">Bevölkerung: {city.properties.population.toLocaleString()} Einw.</p>
-            <p className="text-base">Männer: {city.properties.population_man.toLocaleString()} Einw.</p>
-            <p className="text-base">Frauen: {city.properties.population_woman.toLocaleString()} Einw.</p>
-            <p className="text-base">Bevölkerungsdichte: {(city.properties.population / city.properties.area).toFixed(1)} Einw/km²</p>
+            <p className="text-base">Fläche: {formatArea(city.properties.area)}</p>
+            <p className="text-base">Bevölkerung: {formatPeople(city.properties.population)}</p>
+            <p className="text-base">Männer: {formatPeople(city.properties.population_man)}</p>
+            <p className="text-base">Frauen: {formatPeople(city.properties.population_woman)}</p>
+            <p className="text-base">Bevölkerungsdichte: {formatDensity(city.properties)}</p>
         </div>
     );
 };

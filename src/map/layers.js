@@ -1,38 +1,10 @@
 import { GeoJsonLayer, ScatterplotLayer, TextLayer } from '@deck.gl/layers';
-import { scaleLinear, scaleThreshold } from 'd3-scale';
 import { cityKey } from './selection';
+import { CITY_COLOR_SCALE, CITY_RADIUS_SCALE, DENSITY_COLOR_SCALE, density } from './scales';
 
-const HIGHLIGHT_COLOR = [23, 86, 118, 250];
-
-const density = (d) => d.properties.population / d.properties.area;
-
-export const DISTRICTS_COLOR_SCALE = scaleThreshold()
-    .domain([500, 1000, 1500, 2000, 2500])
-    .range([
-        [37, 52, 148, 200],
-        [44, 127, 184, 200],
-        [65, 182, 196, 200],
-        [127, 205, 187, 200],
-        [199, 233, 180, 200]
-    ]);
-
-const CITIES_COLOR_SCALE = scaleThreshold()
-    .domain([100, 200, 300, 400, 500])
-    .range([
-        [27, 120, 55, 255],
-        [56, 166, 91, 255],
-        [109, 192, 124, 255],
-        [177, 221, 161, 255],
-        [230, 245, 208, 255]
-    ]);
-
-const POINT_SIZE_SCALE = scaleLinear()
-    .domain([0, 30000])
-    .range([500, 3000]);
-
-const POINT_COLOR_SCALE = scaleLinear()
-    .domain([0, 50000])
-    .range([[255, 255, 255], [189, 0, 38]]);
+// Warm colours stand out against the blue-green density scale; hover is lighter than selection.
+const HOVER_COLOR = [254, 217, 166, 230];
+const SELECTED_COLOR = [253, 141, 60, 240];
 
 // Soft shadow around the border of Bavaria, drawn as three lines of decreasing width.
 export function boundaryGlowLayers(boundary) {
@@ -70,7 +42,7 @@ export function regionsLayer(regions, selectedRegionId) {
         pickable: true,
         // Hover highlight only before a Bezirk is chosen; afterwards the districts are the target.
         autoHighlight: !selectedRegionId,
-        highlightColor: HIGHLIGHT_COLOR,
+        highlightColor: HOVER_COLOR,
         stroked: false,
         filled: true,
         extruded: true,
@@ -115,7 +87,7 @@ export function districtsLayer(districts, selectedDistrictId) {
         data: districts,
         pickable: true,
         autoHighlight: true,
-        highlightColor: HIGHLIGHT_COLOR,
+        highlightColor: HOVER_COLOR,
         stroked: true,
         filled: true,
         extruded: true,
@@ -127,10 +99,8 @@ export function districtsLayer(districts, selectedDistrictId) {
             return density(d) * (isSelected ? 65 : 20);
         },
         getFillColor: d => {
-            if (d.properties.id === selectedDistrictId) return HIGHLIGHT_COLOR;
-            return d.properties.kind === 'stadt'
-                ? CITIES_COLOR_SCALE(d.properties.population)
-                : DISTRICTS_COLOR_SCALE(d.properties.area);
+            if (d.properties.id === selectedDistrictId) return SELECTED_COLOR;
+            return DENSITY_COLOR_SCALE(density(d));
         },
         getLineColor: [255, 255, 255, 50],
         lineWidthMinPixels: 1,
@@ -154,23 +124,21 @@ export function cityPointsLayer(cities, selectedCityKey) {
         opacity: 0.8,
         stroked: true,
         filled: true,
-        radiusScale: .8,
-        radiusMinPixels: 3,
-        radiusMaxPixels: 25,
+        radiusUnits: 'pixels',
+        radiusMinPixels: 2,
         lineWidthMinPixels: 1,
         getPosition: d => d.geometry.coordinates,
-        getRadius: d => cityKey(d) === selectedCityKey
-            ? POINT_SIZE_SCALE(d.properties.population * 10)
-            : POINT_SIZE_SCALE(d.properties.population * 1.5),
+        getRadius: d => CITY_RADIUS_SCALE(d.properties.population) * (cityKey(d) === selectedCityKey ? 1.6 : 1),
         getFillColor: d => cityKey(d) === selectedCityKey
-            ? [100, 150, 255, 200]
-            : POINT_COLOR_SCALE(d.properties.population * 1.5),
-        getLineColor: [255, 255, 255],
+            ? SELECTED_COLOR
+            : CITY_COLOR_SCALE(d.properties.population),
+        getLineColor: d => cityKey(d) === selectedCityKey ? [40, 40, 40] : [255, 255, 255],
         parameters: {
             depthTest: false
         },
         updateTriggers: {
             getFillColor: [selectedCityKey],
+            getLineColor: [selectedCityKey],
             getRadius: [selectedCityKey]
         }
     });

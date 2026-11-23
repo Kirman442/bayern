@@ -2,6 +2,7 @@ import { useCallback, useMemo, useReducer, useState } from 'react';
 import DeckGL from '@deck.gl/react';
 import { Map } from '@vis.gl/react-maplibre';
 import SidePanel from './SidePanel';
+import { formatArea, formatPeople } from '../map/format';
 import useBavariaData from '../map/useBavariaData';
 import { cityKey, initialSelection, selectionReducer } from '../map/selection';
 import {
@@ -33,8 +34,8 @@ function getTooltip({ object }) {
         html: `
             <div><b>Stadt / Gemeinde</b></div>
             <div><b>Name:</b> ${p.name}</div>
-            <div><b>Bevölkerung:</b> ${p.population.toLocaleString()}</div>
-            <div><b>Fläche:</b> ${p.area} km²</div>
+            <div><b>Bevölkerung:</b> ${formatPeople(p.population)}</div>
+            <div><b>Fläche:</b> ${formatArea(p.area)}</div>
         `
     };
 }

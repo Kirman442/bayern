@@ -17,7 +17,7 @@ function withDisplayNames(districts) {
     return districts.features.map(f => {
         const prefix = f.properties.kind === 'landkreis'
             ? 'Landkreis'
-            : f.properties.id === MUNICH_ID ? 'Landeshauptstadt' : 'Kreisfreiestadt';
+            : f.properties.id === MUNICH_ID ? 'Landeshauptstadt' : 'Kreisfreie Stadt';
         return { ...f, properties: { ...f.properties, name: `${prefix} ${f.properties.name}` } };
     });
 }
