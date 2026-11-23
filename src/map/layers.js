@@ -3,8 +3,13 @@ import { cityKey } from './selection';
 import { CITY_COLOR_SCALE, CITY_RADIUS_SCALE, DENSITY_COLOR_SCALE, density } from './scales';
 
 // Warm colours stand out against the blue-green density scale; hover is lighter than selection.
-const HOVER_COLOR = [254, 217, 166, 230];
-const SELECTED_COLOR = [253, 141, 60, 240];
+const HOVER_COLOR = [254, 196, 79, 255];
+const SELECTED_COLOR = [253, 141, 60, 255];
+const CITY_OUTLINE = [45, 45, 60, 220];
+
+// Brighter than deck.gl's default lighting, so the extruded colours keep matching the legend
+// instead of turning murky on the shaded sides.
+const MATERIAL = { ambient: 0.65, diffuse: 0.45, shininess: 16, specularColor: [40, 40, 40] };
 
 // Soft shadow around the border of Bavaria, drawn as three lines of decreasing width.
 export function boundaryGlowLayers(boundary) {
@@ -46,18 +51,21 @@ export function regionsLayer(regions, selectedRegionId) {
         stroked: false,
         filled: true,
         extruded: true,
+        material: MATERIAL,
         lineWidthScale: 1,
         wireframe: true,
         lineWidthMinPixels: 1,
         getFillColor: d => {
             if (isSelected(d)) return [100, 150, 255, 200];
-            if (selectedRegionId) return [100, 100, 100, 100];
-            return [65, 182, 230, 180];
+            // Other Bezirke step back into a light neutral, so the chosen one carries the colour.
+            if (selectedRegionId) return [236, 238, 242, 200];
+            return [65, 182, 230, 200];
         },
         getLineColor: [255, 255, 230, 20],
-        getElevation: d => density(d) * 5,
+        getElevation: d => (selectedRegionId && !isSelected(d) ? 0 : density(d) * 5),
         updateTriggers: {
             getFillColor: [selectedRegionId],
+            getElevation: [selectedRegionId],
         }
     });
 }
@@ -70,12 +78,13 @@ export function regionLabelsLayer(regions, selectedRegionId) {
         getPosition: d => d.centroid,
         getText: d => d.properties.name,
         getSize: 15,
-        getColor: d => d.properties.id === selectedRegionId ? [0, 0, 0, 0] : [40, 44, 70, 230],
+        getColor: d => d.properties.id === selectedRegionId ? [0, 0, 0, 0] : [40, 44, 70, 255],
         fontFamily: 'system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
         fontWeight: 600,
-        fontSettings: { sdf: true },
-        outlineWidth: 4,
-        outlineColor: [255, 255, 255, 220],
+        // A light plate behind the name reads on every fill; an SDF outline smeared the glyphs.
+        background: true,
+        getBackgroundColor: d => d.properties.id === selectedRegionId ? [0, 0, 0, 0] : [255, 255, 255, 210],
+        backgroundPadding: [5, 2],
         characterSet: 'auto',
         getTextAnchor: 'middle',
         getAlignmentBaseline: 'center',
@@ -83,7 +92,8 @@ export function regionLabelsLayer(regions, selectedRegionId) {
             depthTest: false
         },
         updateTriggers: {
-            getColor: [selectedRegionId]
+            getColor: [selectedRegionId],
+            getBackgroundColor: [selectedRegionId],
         }
     });
 }
@@ -100,6 +110,7 @@ export function districtsLayer(districts, selectedDistrictId) {
         stroked: true,
         filled: true,
         extruded: true,
+        material: MATERIAL,
         wireframe: true,
         getElevation: d => {
             const isStadt = d.properties.kind === 'stadt';
@@ -123,31 +134,37 @@ export function districtsLayer(districts, selectedDistrictId) {
     });
 }
 
-// Gemeinden as circles; the selected one is drawn bigger and blue.
+// Gemeinden as circles; the selected one is drawn bigger, in orange with a black outline.
 export function cityPointsLayer(cities, selectedCityKey) {
     if (cities.length === 0) return null;
     return new ScatterplotLayer({
         id: 'city-points',
         data: cities,
         pickable: true,
-        opacity: 0.8,
+        opacity: 0.9,
+        autoHighlight: true,
+        highlightColor: [255, 255, 0, 255],
         stroked: true,
         filled: true,
         radiusUnits: 'pixels',
-        radiusMinPixels: 2,
+        radiusMinPixels: 3,
         lineWidthMinPixels: 1,
         getPosition: d => d.geometry.coordinates,
         getRadius: d => CITY_RADIUS_SCALE(d.properties.population) * (cityKey(d) === selectedCityKey ? 1.6 : 1),
         getFillColor: d => cityKey(d) === selectedCityKey
             ? SELECTED_COLOR
             : CITY_COLOR_SCALE(d.properties.population),
-        getLineColor: d => cityKey(d) === selectedCityKey ? [40, 40, 40] : [255, 255, 255],
+        // A dark outline keeps even the white, small Gemeinden visible on any fill colour.
+        getLineColor: d => cityKey(d) === selectedCityKey ? [0, 0, 0, 255] : CITY_OUTLINE,
+        getLineWidth: d => cityKey(d) === selectedCityKey ? 2 : 1,
+        lineWidthUnits: 'pixels',
         parameters: {
             depthTest: false
         },
         updateTriggers: {
             getFillColor: [selectedCityKey],
             getLineColor: [selectedCityKey],
+            getLineWidth: [selectedCityKey],
             getRadius: [selectedCityKey]
         }
     });

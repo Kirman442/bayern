@@ -8,13 +8,13 @@ export const density = (feature) => feature.properties.population / feature.prop
 export const DENSITY_COLOR_SCALE = scaleThreshold()
     .domain([100, 150, 200, 300, 500, 1500])
     .range([
-        [255, 255, 204, 210],
-        [199, 233, 180, 210],
-        [127, 205, 187, 210],
-        [65, 182, 196, 210],
-        [29, 145, 192, 210],
-        [34, 94, 168, 210],
-        [12, 44, 132, 210],
+        [255, 255, 204, 255],
+        [199, 233, 180, 255],
+        [127, 205, 187, 255],
+        [65, 182, 196, 255],
+        [29, 145, 192, 255],
+        [34, 94, 168, 255],
+        [12, 44, 132, 255],
     ]);
 
 // Gemeinden: circle area is proportional to population (radius in pixels, so the legend

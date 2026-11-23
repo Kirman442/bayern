@@ -57,6 +57,10 @@ function getTooltip({ object, layer }) {
     };
 }
 
+// A hand over everything clickable, the usual grab cursor elsewhere.
+const getCursor = ({ isHovering, isDragging }) =>
+    isDragging ? 'grabbing' : isHovering ? 'pointer' : 'grab';
+
 const BavariaMapThree = () => {
     const data = useBavariaData();
     const [selection, dispatch] = useReducer(selectionReducer, window.location.hash, selectionFromHash);
@@ -187,6 +191,7 @@ const BavariaMapThree = () => {
                 initialViewState={viewState}
                 controller={true}
                 getTooltip={getTooltip}
+                getCursor={getCursor}
                 onClick={handleClick}
                 onHover={handleHover}
             >
