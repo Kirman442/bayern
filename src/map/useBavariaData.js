@@ -1,13 +1,8 @@
 import { useEffect, useState } from 'react';
 import centroid from '@turf/centroid';
 
-const DATA_BASE_URL = 'https://raw.githubusercontent.com/Kirman442/deckgl/main';
-const BOUNDARY_URL = `${DATA_BASE_URL}/boundaries/germany_bayern_boundaries.json`;
-const REGIONS_URL = `${DATA_BASE_URL}/regions_filtered_min.json`;
-const DISTRICTS_URL = `${DATA_BASE_URL}/landkreisestaedte_min.json`;
-const INDEPENDENT_CITIES_URL = `${DATA_BASE_URL}/kreisfreiestaedte_min.json`;
-const REGION_CODES = ['091', '092', '093', '094', '095', '096', '097'];
-const citiesUrl = (code) => `${DATA_BASE_URL}/cities/${code}/cities_region_${code}.geojson`;
+// Built by scripts/prepare-data.mjs and served from public/data, next to the app.
+const dataUrl = (name) => `${import.meta.env.BASE_URL}data/${name}`;
 
 const MUNICH_ID = '09162';
 
@@ -17,20 +12,14 @@ async function loadJson(url, signal) {
     return response.json();
 }
 
-// Landkreise and kreisfreie Städte share one layer; `kind` tells them apart.
-function prepareDistricts(districtsJson, citiesJson) {
-    const landkreise = districtsJson.features.map(f => ({
-        ...f,
-        properties: { ...f.properties, kind: 'landkreis', name: `Landkreis ${f.properties.name}` },
-    }));
-    const staedte = citiesJson.features.map(f => {
-        const prefix = f.properties.id === MUNICH_ID ? 'Landeshauptstadt' : 'Kreisfreiestadt';
-        return {
-            ...f,
-            properties: { ...f.properties, kind: 'stadt', name: `${prefix} ${f.properties.name}` },
-        };
+// Landkreise and kreisfreie Städte share one layer; `kind` in the data tells them apart.
+function withDisplayNames(districts) {
+    return districts.features.map(f => {
+        const prefix = f.properties.kind === 'landkreis'
+            ? 'Landkreis'
+            : f.properties.id === MUNICH_ID ? 'Landeshauptstadt' : 'Kreisfreiestadt';
+        return { ...f, properties: { ...f.properties, name: `${prefix} ${f.properties.name}` } };
     });
-    return [...landkreise, ...staedte];
 }
 
 /**
@@ -55,7 +44,7 @@ export default function useBavariaData() {
             setData(d => ({ ...d, error }));
         };
 
-        loadJson(REGIONS_URL, signal)
+        loadJson(dataUrl('regions.json'), signal)
             .then(json => {
                 const regions = json.features.map(f => ({
                     ...f,
@@ -65,17 +54,16 @@ export default function useBavariaData() {
             })
             .catch(fail);
 
-        loadJson(BOUNDARY_URL, signal)
+        loadJson(dataUrl('boundary.json'), signal)
             .then(boundary => setData(d => ({ ...d, boundary })))
             .catch(fail);
 
-        Promise.all([loadJson(DISTRICTS_URL, signal), loadJson(INDEPENDENT_CITIES_URL, signal)])
-            .then(([districtsJson, citiesJson]) =>
-                setData(d => ({ ...d, districts: prepareDistricts(districtsJson, citiesJson) })))
+        loadJson(dataUrl('districts.json'), signal)
+            .then(json => setData(d => ({ ...d, districts: withDisplayNames(json) })))
             .catch(fail);
 
-        Promise.all(REGION_CODES.map(code => loadJson(citiesUrl(code), signal)))
-            .then(results => setData(d => ({ ...d, cities: results.flatMap(r => r.features) })))
+        loadJson(dataUrl('cities.json'), signal)
+            .then(json => setData(d => ({ ...d, cities: json.features })))
             .catch(fail);
 
         return () => controller.abort();
