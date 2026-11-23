@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { GeoJsonLayer } from '@deck.gl/layers';
 import centroid from '@turf/centroid';
 import { TextLayer } from '@deck.gl/layers';
@@ -9,7 +9,6 @@ const useRegions = () => {
     const [regionsData, setRegionsData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Загрузка данных о регионах
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -25,7 +24,6 @@ const useRegions = () => {
         fetchData();
     }, []);
 
-
     const regionsWithCentroids = regionsData && regionsData.features && regionsData.features.length > 0
         ? regionsData.features.map(region => {
             const polygon = {
@@ -40,7 +38,6 @@ const useRegions = () => {
             };
         })
         : []; // Если regionsData равен null или undefined, возвращаем пустой массив
-
 
     const createRegionsTextLayer = (regionsWithCentroids) => {
         if (!regionsWithCentroids || regionsWithCentroids.length === 0) {
@@ -63,7 +60,6 @@ const useRegions = () => {
         });
     };
 
-    // Создание слоя для регионов
     const createRegionsLayer = (selectedRegion, hoveredRegion, hoveredObject) => {
         if (!regionsData) return null;
 
@@ -77,33 +73,18 @@ const useRegions = () => {
             lineWidthScale: 1,
             wireframe: true,
             lineWidthMinPixels: 1,
-            // getFillColor: d => { // <---- ЗАМЕНИТЕ ВАШ ТЕКУЩИЙ getFillColor НА ЭТОТ КОД ПОЛНОСТЬЮ!
-            //     const isSelectedRegion = selectedRegion && d.properties.id === selectedRegion.properties.id;
-            //     const isHovered = hoveredObject && d.properties.id === hoveredObject.properties.id && hoveredObject.layer.id === 'regions';
 
-            //     console.log("getFillColor - isSelectedRegion:", isSelectedRegion, "isHovered:", isHovered, "hoveredObject:", hoveredObject); // <----  ДОБАВЬТЕ ЭТОТ ЛОГ В НАЧАЛО getFillColor!
-
-
-            //     if (isSelectedRegion) {
-            //         return [200, 80, 200, 255]; // Фиолетовый цвет для ВЫБРАННОГО региона
-            //     } else if (isHovered) {
-            //         return [8, 170, 255, 180]; // Светло-синий цвет для наведения
-            //     } else {
-            //         return [65, 182, 230, 180]; //  Базовый синий цвет для регионов
-            //     }
-            // },
             getFillColor: d => {
                 const isSelected = selectedRegion && d.properties.id === selectedRegion.properties.id;
                 const isHovered = hoveredRegion && d.properties.id === hoveredRegion.properties.id;
-                const isSelectedRegion = selectedRegion && d.properties.id === selectedRegion.properties.id; // <----  НОВОЕ УСЛОВИЕ ДЛЯ ВЫБРАННОГО РЕГИОНА
+                const isSelectedRegion = selectedRegion && d.properties.id === selectedRegion.properties.id;
 
                 if (isSelected) return [100, 150, 255, 200];
                 if (isHovered) return [23, 86, 118, 250];
                 if (selectedRegion) return [100, 100, 100, 100];
-                if (isSelectedRegion) return [200, 80, 200, 255]; // <----  НОВЫЙ ЦВЕТ - Фиолетовый для ВЫБРАННОГО региона
+                if (isSelectedRegion) return [200, 80, 200, 255];
                 return [65, 182, 230, 180];
             },
-            // getLineColor: [60, 60, 60, 200],
             getLineColor: d => {
                 const isSelected = selectedRegion && d.properties.id === selectedRegion.properties.id;
                 const isHovered = hoveredRegion && d.properties.id === hoveredRegion.properties.id;

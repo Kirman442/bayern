@@ -1,8 +1,4 @@
-import React from 'react';
-
 const CityDetails = ({ selectedCityInDistrict }) => {
-    // if (!selectedCityInDistrict) return null;
-    // Проверяем, что selectedCityInDistrict является городом
     if (!selectedCityInDistrict || !selectedCityInDistrict.properties || !selectedCityInDistrict.properties['land-id']) {
         return null; // Если это не город, ничего не отображаем
     }

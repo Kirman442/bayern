@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { GeoJsonLayer } from '@deck.gl/layers';
 
 const Boundary_URL = 'https://raw.githubusercontent.com/Kirman442/deckgl/main/boundaries/germany_bayern_boundaries.json';
@@ -7,7 +7,6 @@ const useBoundary = () => {
     const [boundaryData, setBoundaryData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Загрузка данных о границах
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -23,7 +22,6 @@ const useBoundary = () => {
         fetchData();
     }, []);
 
-    // Создание слоя для границ баварии
     const createGlowLayer = (width, opacity, id) => {
         return new GeoJsonLayer({
             id: `border-glow-${id}`,

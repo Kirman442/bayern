@@ -1,4 +1,3 @@
-import React from 'react';
 import { scaleLinear } from 'd3-scale';
 
 const POINT_SIZE_SCALE_LEGEND = scaleLinear()
@@ -10,7 +9,6 @@ const POINT_COLOR_SCALE_LEGEND = scaleLinear()
     .range([[255, 255, 255], [200, 0, 0]]);
 
 const CityCirclesLegend = () => {
-    // Генерируем 5 значений населения, равномерно распределенных в домене шкалы размера
     const domain = POINT_SIZE_SCALE_LEGEND.domain();
     const populationValues = [
         domain[1], // Максимальное значение
