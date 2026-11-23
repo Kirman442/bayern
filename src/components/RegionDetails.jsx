@@ -1,30 +1,23 @@
 import ColorLegend from './ColorLegend';
 import CityCirclesLegend from './CityCirclesLegend';
 
-const RegionDetails = ({ selectedRegion, districts, cities, onDistrictClick, setSelectedDistrictCityInfo, selectedDistrictCityInfo, setSelectedRegionInfo, colorScale, currentCities, handleTabClick }) => {
-    if (!selectedRegion) return null;
-
-
-    const handleDistrictClick = (district) => {
-        onDistrictClick(district); // Передаём выбранный район в родительский компонент
-    };
-    const handleSwitchToDistrictsTab = () => {
-        handleTabClick('districts'); // Переключаем на вкладку "Края"
-    };
+const RegionDetails = ({ region, districts, selectedDistrictId, cityCount, colorScale, onDistrictClick, onShowDistrictsTab }) => {
+    const landkreise = districts.filter(d => d.properties.kind === 'landkreis');
+    const staedte = districts.filter(d => d.properties.kind === 'stadt');
 
     return (
         <div className="mb-4">
             {/* Информация о выбранной области */}
             <div className="p-3 bg-blue-100 rounded">
-                <h3 className="text-lg font-semibold">{selectedRegion.properties.name}</h3>
-                <p className="text-base">Bevölkerung: {selectedRegion.properties.population.toLocaleString()} Einw.</p>
-                <p className="text-base">Fläche: {selectedRegion.properties.area.toFixed(2)} km²</p>
-                <p className="text-base">Bevölkerungsdichte: {(selectedRegion.properties.population / selectedRegion.properties.area).toFixed(1)} Einw/km²</p>
+                <h3 className="text-lg font-semibold">{region.properties.name}</h3>
+                <p className="text-base">Bevölkerung: {region.properties.population.toLocaleString()} Einw.</p>
+                <p className="text-base">Fläche: {region.properties.area.toFixed(2)} km²</p>
+                <p className="text-base">Bevölkerungsdichte: {(region.properties.population / region.properties.area).toFixed(1)} Einw/km²</p>
                 <h4 className="text-base font-semibold">Als Teil des Bezirks:</h4>
-                <p className="text-base">Kreisfreiestädte: {cities.length}</p>
-                <p className="text-base">Landkreise: {districts.length}</p>
-                {currentCities && (
-                    <p className="text-base">Städte / Gemeinde: {currentCities.length}</p>
+                <p className="text-base">Kreisfreiestädte: {staedte.length}</p>
+                <p className="text-base">Landkreise: {landkreise.length}</p>
+                {cityCount !== null && (
+                    <p className="text-base">Städte / Gemeinde: {cityCount}</p>
                 )}
 
                 <ColorLegend colorScale={colorScale} />
@@ -36,16 +29,12 @@ const RegionDetails = ({ selectedRegion, districts, cities, onDistrictClick, set
                 <div className="scrollable-list" style={{ maxHeight: '250px', overflowY: 'auto' }}>
                     <h5 className="font-semibold mt-2">🏞️ Landkreise:</h5>
                     <ul className="space-y-2">
-                        {districts.map(district => (
+                        {landkreise.map(district => (
                             <li key={district.properties.id}>
                                 <div
                                     className={`p-2 bg-gray-50 rounded cursor-pointer hover:bg-gray-100 scrollable-list-item 
-                                        ${selectedDistrictCityInfo?.properties.id === district.properties.id ? 'bg-teal-100 font-bold' : ''}`}
-                                    onClick={() => {
-                                        handleDistrictClick(district);
-                                        setSelectedDistrictCityInfo(district);
-                                        setSelectedRegionInfo(null);
-                                    }}
+                                        ${selectedDistrictId === district.properties.id ? 'bg-teal-100 font-bold' : ''}`}
+                                    onClick={() => onDistrictClick(district.properties.id)}
                                 >
                                     <p>{district.properties.name}</p>
                                     <p>Bevölkerung: {district.properties.population.toLocaleString()} Einw.</p>
@@ -57,16 +46,12 @@ const RegionDetails = ({ selectedRegion, districts, cities, onDistrictClick, set
 
                     <h5 className="font-semibold mt-2">🏙️ Kreisfreiestädte:</h5>
                     <ul className="space-y-2">
-                        {cities.map(city => (
+                        {staedte.map(city => (
                             <li key={city.properties.id}>
                                 <div
                                     className={`p-2 bg-gray-50 rounded cursor-pointer hover:bg-gray-100 scrollable-list-item 
-                                        ${selectedDistrictCityInfo?.properties.id === city.properties.id ? 'bg-teal-100 font-bold' : ''}`}
-                                    onClick={() => {
-                                        handleDistrictClick(city);
-                                        setSelectedDistrictCityInfo(city);
-                                        setSelectedRegionInfo(null);
-                                    }}
+                                        ${selectedDistrictId === city.properties.id ? 'bg-teal-100 font-bold' : ''}`}
+                                    onClick={() => onDistrictClick(city.properties.id)}
                                 >
                                     <p>{city.properties.name}</p>
                                     <p>Bevölkerung: {city.properties.population.toLocaleString()} Einw.</p>
@@ -80,7 +65,7 @@ const RegionDetails = ({ selectedRegion, districts, cities, onDistrictClick, set
             <div className="region-tab-content p-2 text-center"> {/* Центрируем текст */}
                 <h5 className="font-semibold mt-2">
                     <p
-                        onClick={handleSwitchToDistrictsTab}
+                        onClick={onShowDistrictsTab}
                         className="text-base cursor-pointer underline text-[#253494] hover:text-[#0C1130] transition-colors duration-200"
                     >
                         Hier klicken für weitere Informationen

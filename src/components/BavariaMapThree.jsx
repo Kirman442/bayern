@@ -1,14 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useMemo, useReducer, useState } from 'react';
 import DeckGL from '@deck.gl/react';
 import { Map } from '@vis.gl/react-maplibre';
-import useBoundary from './BoundaryHandler';
-import useRegions from './RegionsHandler';
-import useDistricts from './DistrictsHandler';
 import SidePanel from './SidePanel';
-import useCombinedCityData from './CityPointsHandler';
+import useBavariaData from '../map/useBavariaData';
+import { cityKey, initialSelection, selectionReducer } from '../map/selection';
+import {
+    boundaryGlowLayers,
+    cityPointsLayer,
+    districtsLayer,
+    regionLabelsLayer,
+    regionsLayer,
+} from '../map/layers';
 
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/positron-nolabels-gl-style/style.json';
-const mapStyle = `${MAP_STYLE}`;
 
 const INITIAL_VIEW_STATE = {
     longitude: 11.4,
@@ -20,170 +24,135 @@ const INITIAL_VIEW_STATE = {
     bearing: 0
 };
 
+const regionCode = (id) => id.slice(0, 3);
+
+function getTooltip({ object }) {
+    if (!object?.properties?.['land-id']) return null;
+    const p = object.properties;
+    return {
+        html: `
+            <div><b>Stadt / Gemeinde</b></div>
+            <div><b>Name:</b> ${p.name}</div>
+            <div><b>Bevölkerung:</b> ${p.population.toLocaleString()}</div>
+            <div><b>Fläche:</b> ${p.area} km²</div>
+        `
+    };
+}
+
 const BavariaMapThree = () => {
-    const [selectedRegion, setSelectedRegion] = useState(null);
-    const [hoveredRegion, setHoveredRegion] = useState(null);
-    const [hoveredDistrict, setHoveredDistrict] = useState(null);
-    const [hoveredObject, setHoveredObject] = useState(null);
-    const [selectedDistrict, setSelectedDistrict] = useState(null);
-    const [selectedDistrictCity, setSelectedDistrictCity] = useState(null);
-    const [selectedRegionCity, setSelectedRegionCity] = useState(null);
+    const data = useBavariaData();
+    const [selection, dispatch] = useReducer(selectionReducer, initialSelection);
+    const [hoveredRegionId, setHoveredRegionId] = useState(null);
+    const { regionId, districtId, cityKey: selectedCityKey } = selection;
 
-    const [, setSelectedRegionInfo] = useState(null);
-    const [selectedDistrictCityInfo, setSelectedDistrictCityInfo] = useState(null); // New state for district/city info in SidePanel
+    // Everything the map and the panel show is derived from the selected ids.
+    const region = useMemo(
+        () => data.regions?.find(r => r.properties.id === regionId) ?? null,
+        [data.regions, regionId]
+    );
+    const regionDistricts = useMemo(
+        () => regionId ? data.districts.filter(d => regionCode(d.properties.id) === regionCode(regionId)) : [],
+        [data.districts, regionId]
+    );
+    const district = useMemo(
+        () => regionDistricts.find(d => d.properties.id === districtId) ?? null,
+        [regionDistricts, districtId]
+    );
+    const regionCities = useMemo(
+        () => regionId ? data.cities.filter(c => regionCode(c.properties['land-id']) === regionCode(regionId)) : [],
+        [data.cities, regionId]
+    );
+    // A Landkreis narrows the Gemeinden to its own; a kreisfreie Stadt has none, so the
+    // whole Bezirk stays visible.
+    const visibleCities = useMemo(
+        () => district?.properties.kind === 'landkreis'
+            ? regionCities.filter(c => c.properties['land-id'] === district.properties.id)
+            : regionCities,
+        [regionCities, district]
+    );
+    const selectedCity = useMemo(
+        () => visibleCities.find(c => cityKey(c) === selectedCityKey) ?? null,
+        [visibleCities, selectedCityKey]
+    );
+    const hoveredRegion = useMemo(
+        () => data.regions?.find(r => r.properties.id === hoveredRegionId) ?? null,
+        [data.regions, hoveredRegionId]
+    );
 
-    const { createGlowLayer } = useBoundary();
-    const { regionsWithCentroids, isLoading, createRegionsLayer, createRegionsTextLayer } = useRegions();
-    const { districts, cities, fetchDistrictsAndCitiesData, createDistrictsLayer, resetDistrictsData, DISTRICTS_COLOR_SCALE } = useDistricts();
+    // Layers are rebuilt only when their data or the selection changes, not on hover.
+    const glowLayers = useMemo(() => boundaryGlowLayers(data.boundary), [data.boundary]);
+    const regionLayer = useMemo(
+        () => data.regions && regionsLayer(data.regions, regionId),
+        [data.regions, regionId]
+    );
+    const labelsLayer = useMemo(() => data.regions && regionLabelsLayer(data.regions), [data.regions]);
+    const districtLayer = useMemo(
+        () => districtsLayer(regionDistricts, districtId),
+        [regionDistricts, districtId]
+    );
+    const citiesLayer = useMemo(
+        () => cityPointsLayer(visibleCities, selectedCityKey),
+        [visibleCities, selectedCityKey]
+    );
+    const layers = [...glowLayers, regionLayer, districtLayer, labelsLayer, citiesLayer].filter(Boolean);
 
-    const { createCityPointsLayer, getCitiesForDistrict, getCitiesForRegion, resetCityPoints } = useCombinedCityData();
-    const [currentCities, setCurrentCities] = useState(null);
-
-    const [clickedCity, setClickedCity] = useState(null);
-
-    useEffect(() => {
-        if (selectedDistrictCity) {
-            const cities = getCitiesForDistrict(selectedDistrictCity.properties.id);
-            setCurrentCities(cities);
+    const handleClick = useCallback(({ object, layer }) => {
+        if (!object) {
+            dispatch({ type: 'reset' });
+            return;
         }
-    }, [selectedDistrictCity, getCitiesForDistrict]);
-
-    useEffect(() => {
-        if (selectedRegionCity) {
-            const cities = getCitiesForRegion(selectedRegionCity.properties.id);
-            setCurrentCities(cities);
+        if (layer.id === 'regions') {
+            dispatch({ type: 'selectRegion', id: object.properties.id });
+        } else if (layer.id === 'districts') {
+            dispatch({ type: 'selectDistrict', id: object.properties.id });
+        } else if (layer.id === 'city-points') {
+            dispatch({ type: 'selectCity', key: cityKey(object) });
         }
-    }, [selectedRegionCity, getCitiesForRegion]);
+    }, []);
 
-    useEffect(() => {
-    }, [clickedCity]);
+    // The panel shows the Bezirk under the cursor until one is selected.
+    const handleHover = useCallback(({ object, layer }) => {
+        const id = !regionId && layer?.id === 'regions' ? object.properties.id : null;
+        setHoveredRegionId(prev => (prev === id ? prev : id));
+    }, [regionId]);
 
-    const handleRegionClick = (object) => {
-        setSelectedRegion(object);
-        setSelectedRegionInfo(object); // Update selectedRegionInfo state with clicked region object
-        setSelectedRegionCity(object);
-        setSelectedDistrict(null); // Сбрасываем выбранный район
-        setSelectedDistrictCityInfo(null); // Reset district/city info when new region is selected (optional, adjust as needed)
-        fetchDistrictsAndCitiesData(object.properties.id);
-        resetCityPoints();
-    };
-
-    const handleResetSelection = () => {
-        setSelectedRegion(null);
-        setSelectedDistrict(null);
-        setSelectedRegionInfo(null);
-        setSelectedDistrictCity(null);
-        setSelectedDistrictCityInfo(null);
-        setSelectedRegionCity(null);
-        resetDistrictsData(); //null
-        resetCityPoints(); // сбрасываем точки городов
-    };
-
-    const handleDistrictClick = (object) => {
-        setSelectedDistrict(object);
-        setSelectedDistrictCity(object);
-        setSelectedDistrictCityInfo(object); // Update selectedDistrictCityInfo state with clicked district/city object
-        setClickedCity(object)
-    };
-
-    if (isLoading) {
+    if (data.error && !data.regions) {
         return (
             <div className="flex items-center justify-center h-screen">
-                <div className="text-lg">Загрузка данных...</div>
+                <div className="text-lg">Die Daten konnten nicht geladen werden.</div>
             </div>
         );
-    };
+    }
 
-    const cityLayer = selectedRegionCity && currentCities // Меняем на selectedDistrictCity если хотим получить только города в районе
-        ? createCityPointsLayer(null, null, clickedCity)
-        : null;
-
-    const renderLayers = () => {
-        const layers = [
-            createGlowLayer(10, 0.1, 'outer'),
-            createGlowLayer(5, 0.2, 'middle'),
-            createGlowLayer(2, 0.3, 'inner'),
-            createRegionsLayer(selectedRegion, hoveredRegion, hoveredObject),
-            createDistrictsLayer(hoveredDistrict, selectedDistrictCity), // Меняем на selectedRegionCity если хотим получить только города в области
-            createRegionsTextLayer(regionsWithCentroids),
-            cityLayer
-        ].filter(Boolean);
-        return layers;
-    };
-
-    function getTooltip({ object }) {
-        if (!object) return null;
-
-        if (object.properties && object.properties["land-id"]) {
-            return {
-                html: `
-                    <div><b>Stadt / Gemeinde</b></div>
-                    <div><b>Name:</b> ${object.properties.name}</div>
-                    <div><b>Bevölkerung:</b> ${object.properties.population.toLocaleString()}</div>
-                    <div><b>Fläche:</b> ${object.properties.area} km²</div>
-                    `
-            };
-        }
-        return null;
+    if (!data.regions) {
+        return (
+            <div className="flex items-center justify-center h-screen">
+                <div className="text-lg">Daten werden geladen…</div>
+            </div>
+        );
     }
 
     return (
         <div style={{ width: '800px', height: '600px' }} >
             <DeckGL
-                layers={renderLayers()}
+                layers={layers}
                 initialViewState={INITIAL_VIEW_STATE}
                 controller={true}
                 getTooltip={getTooltip}
-                onClick={({ object, layer }) => {
-                    if (object) {
-
-                        if (layer.id === 'regions') {
-                            handleRegionClick(object);
-                        } else if (layer.id === 'districts') {
-                            handleDistrictClick(object);
-                        } else if (layer.id === 'city-points') {
-                            setClickedCity(object);
-                            setSelectedDistrictCityInfo(object);
-                        } else {
-                            handleRegionClick(object);
-                        }
-                    } else {
-                        handleResetSelection();
-                    }
-                }}
-                onHover={({ object }) => {
-                    if (object) {
-                        if (selectedRegion) {
-                            setHoveredDistrict(object);
-                        } else {
-                            setHoveredRegion(object);
-                        }
-                    } else {
-                        setHoveredRegion(null);
-                        setHoveredDistrict(null);
-                    }
-                }}
+                onClick={handleClick}
+                onHover={handleHover}
             >
-                <Map mapStyle={mapStyle} />
+                <Map mapStyle={MAP_STYLE} />
             </DeckGL>
-            {/* Боковая панель */}
             <SidePanel
-                selectedRegion={selectedRegion}
-                districts={districts}
-                cities={cities}
-                onResetSelection={handleResetSelection}
-                setSelectedDistrictCityInfo={setSelectedDistrictCityInfo}
-                selectedDistrictCityInfo={selectedDistrictCityInfo}
-                setSelectedRegionInfo={setSelectedRegionInfo}
-                onDistrictClick={handleDistrictClick}
-                selectedDistrict={selectedDistrict}
+                selection={selection}
+                dispatch={dispatch}
+                region={region}
                 hoveredRegion={hoveredRegion}
-                hoveredObject={hoveredObject}
-                setHoveredObject={setHoveredObject}
-                colorScale={DISTRICTS_COLOR_SCALE}
-                clickedCity={setClickedCity}
-                currentCities={currentCities}
-                selectedCityInDistrict={clickedCity}
+                districts={regionDistricts}
+                district={district}
+                cities={visibleCities}
+                city={selectedCity}
             />
         </div>
     );
