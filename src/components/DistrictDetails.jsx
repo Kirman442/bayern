@@ -1,4 +1,4 @@
-const DistrictDetails = ({ selectedDistrict, currentCities }) => {
+const DistrictDetails = ({ selectedDistrict, cityCount }) => {
     if (!selectedDistrict) return null;
 
     return (
@@ -9,8 +9,8 @@ const DistrictDetails = ({ selectedDistrict, currentCities }) => {
             <p className="text-base">Männer: {selectedDistrict.properties.population_man.toLocaleString()} Einw.</p>
             <p className="text-base">Frauen: {selectedDistrict.properties.population_woman.toLocaleString()} Einw.</p>
             <p className="text-base">Bevölkerungsdichte: {(selectedDistrict.properties.population / selectedDistrict.properties.area).toFixed(1)} Einw/km²</p>
-            {currentCities && (
-                <p className="text-base">Städte / Gemeinden: {currentCities.length}</p>
+            {cityCount !== null && (
+                <p className="text-base">Städte / Gemeinden: {cityCount}</p>
             )}
         </div>
     );
