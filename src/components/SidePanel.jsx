@@ -1,7 +1,7 @@
+import { formatArea, formatPeople } from '../map/format';
 import RegionDetails from './RegionDetails';
 import DistrictDetails from './DistrictDetails';
 import CityDetails from './CityDetails';
-import { DISTRICTS_COLOR_SCALE } from '../map/layers';
 import { cityKey } from '../map/selection';
 
 const DEFAULT_DISTRICT_TEXT = "Wählen Sie einen Landkreis auf der Karte aus, um Informationen über den Landkreis und eine Liste der Städte im Landkreis anzuzeigen.";
@@ -39,7 +39,7 @@ const SidePanel = ({ selection, dispatch, region, hoveredRegion, districts, dist
                     onClick={() => setTab('districts')}
                     disabled={!region}
                 >
-                    Landkreis, kreisfreien Städte
+                    Landkreise, kreisfreie Städte
                 </button>
             </div>
 
@@ -53,8 +53,8 @@ const SidePanel = ({ selection, dispatch, region, hoveredRegion, districts, dist
                 {activeTab === 'regions' && hoveredRegion && !region && (
                     <div className="mb-4 p-3 bg-gray-100 rounded">
                         <h3 className="text-lg font-semibold">{hoveredRegion.properties.name}</h3>
-                        <p className="text-lg">Bevölkerung: {hoveredRegion.properties.population.toLocaleString()} Einw.</p>
-                        <p className="text-lg">Fläche: {hoveredRegion.properties.area.toFixed(2)} km²</p>
+                        <p className="text-lg">Bevölkerung: {formatPeople(hoveredRegion.properties.population)}</p>
+                        <p className="text-lg">Fläche: {formatArea(hoveredRegion.properties.area)}</p>
                     </div>
                 )}
 
@@ -64,7 +64,6 @@ const SidePanel = ({ selection, dispatch, region, hoveredRegion, districts, dist
                         districts={districts}
                         selectedDistrictId={selection.districtId}
                         cityCount={district ? null : cities.length}
-                        colorScale={DISTRICTS_COLOR_SCALE}
                         onDistrictClick={(id) => dispatch({ type: 'selectDistrict', id })}
                         onShowDistrictsTab={() => setTab('districts')}
                     />
@@ -84,7 +83,7 @@ const SidePanel = ({ selection, dispatch, region, hoveredRegion, districts, dist
                         />
                         {!isIndependentCity && (
                             <div className="scrollable-list" style={{ maxHeight: '250px', overflowY: 'auto' }}>
-                                <h5 className="font-semibold mt-2">🏞️ Städte / Gemeinde:</h5>
+                                <h5 className="font-semibold mt-2">🏞️ Städte / Gemeinden:</h5>
                                 <ul className="space-y-2">
                                     {cities.map(c => {
                                         const key = cityKey(c);
@@ -116,7 +115,7 @@ const SidePanel = ({ selection, dispatch, region, hoveredRegion, districts, dist
                     className="px-4 py-2 bg-blue-500 text-blue-950 rounded hover:bg-blue-600"
                     onClick={() => dispatch({ type: 'reset' })}
                 >
-                    Map Zurücksetzen
+                    Karte zurücksetzen
                 </button>
             )}
         </div>

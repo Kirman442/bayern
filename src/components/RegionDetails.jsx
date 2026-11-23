@@ -1,7 +1,8 @@
+import { formatArea, formatDensity, formatPeople } from '../map/format';
 import ColorLegend from './ColorLegend';
 import CityCirclesLegend from './CityCirclesLegend';
 
-const RegionDetails = ({ region, districts, selectedDistrictId, cityCount, colorScale, onDistrictClick, onShowDistrictsTab }) => {
+const RegionDetails = ({ region, districts, selectedDistrictId, cityCount, onDistrictClick, onShowDistrictsTab }) => {
     const landkreise = districts.filter(d => d.properties.kind === 'landkreis');
     const staedte = districts.filter(d => d.properties.kind === 'stadt');
 
@@ -10,17 +11,17 @@ const RegionDetails = ({ region, districts, selectedDistrictId, cityCount, color
             {/* Информация о выбранной области */}
             <div className="p-3 bg-blue-100 rounded">
                 <h3 className="text-lg font-semibold">{region.properties.name}</h3>
-                <p className="text-base">Bevölkerung: {region.properties.population.toLocaleString()} Einw.</p>
-                <p className="text-base">Fläche: {region.properties.area.toFixed(2)} km²</p>
-                <p className="text-base">Bevölkerungsdichte: {(region.properties.population / region.properties.area).toFixed(1)} Einw/km²</p>
+                <p className="text-base">Bevölkerung: {formatPeople(region.properties.population)}</p>
+                <p className="text-base">Fläche: {formatArea(region.properties.area)}</p>
+                <p className="text-base">Bevölkerungsdichte: {formatDensity(region.properties)}</p>
                 <h4 className="text-base font-semibold">Als Teil des Bezirks:</h4>
-                <p className="text-base">Kreisfreiestädte: {staedte.length}</p>
+                <p className="text-base">Kreisfreie Städte: {staedte.length}</p>
                 <p className="text-base">Landkreise: {landkreise.length}</p>
                 {cityCount !== null && (
-                    <p className="text-base">Städte / Gemeinde: {cityCount}</p>
+                    <p className="text-base">Städte / Gemeinden: {cityCount}</p>
                 )}
 
-                <ColorLegend colorScale={colorScale} />
+                <ColorLegend />
                 <CityCirclesLegend />
             </div>
 
@@ -37,14 +38,14 @@ const RegionDetails = ({ region, districts, selectedDistrictId, cityCount, color
                                     onClick={() => onDistrictClick(district.properties.id)}
                                 >
                                     <p>{district.properties.name}</p>
-                                    <p>Bevölkerung: {district.properties.population.toLocaleString()} Einw.</p>
-                                    <p>Fläche: {district.properties.area.toFixed(2)} km²</p>
+                                    <p>Bevölkerung: {formatPeople(district.properties.population)}</p>
+                                    <p>Fläche: {formatArea(district.properties.area)}</p>
                                 </div>
                             </li>
                         ))}
                     </ul>
 
-                    <h5 className="font-semibold mt-2">🏙️ Kreisfreiestädte:</h5>
+                    <h5 className="font-semibold mt-2">🏙️ Kreisfreie Städte:</h5>
                     <ul className="space-y-2">
                         {staedte.map(city => (
                             <li key={city.properties.id}>
@@ -54,8 +55,8 @@ const RegionDetails = ({ region, districts, selectedDistrictId, cityCount, color
                                     onClick={() => onDistrictClick(city.properties.id)}
                                 >
                                     <p>{city.properties.name}</p>
-                                    <p>Bevölkerung: {city.properties.population.toLocaleString()} Einw.</p>
-                                    <p>Fläche: {city.properties.area.toFixed(2)} km²</p>
+                                    <p>Bevölkerung: {formatPeople(city.properties.population)}</p>
+                                    <p>Fläche: {formatArea(city.properties.area)}</p>
                                 </div>
                             </li>
                         ))}
