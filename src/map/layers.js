@@ -1,5 +1,4 @@
 import { GeoJsonLayer, ScatterplotLayer, TextLayer } from '@deck.gl/layers';
-import { CollisionFilterExtension } from '@deck.gl/extensions';
 import { cityKey } from './selection';
 import { CITY_COLOR_SCALE, CITY_RADIUS_SCALE, DENSITY_COLOR_SCALE, density } from './scales';
 
@@ -13,27 +12,19 @@ const LABEL_FONT = 'system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
 export function boundaryGlowLayers(boundary) {
     if (!boundary) return [];
     return [
-        { id: 'outer', width: 10, opacity: 0.1 },
-        { id: 'middle', width: 5, opacity: 0.2 },
-        { id: 'inner', width: 2, opacity: 0.3 },
+        { id: 'outer', width: 8, opacity: 0.06 },
+        { id: 'middle', width: 4, opacity: 0.12 },
+        { id: 'inner', width: 1.5, opacity: 0.3 },
     ].map(({ id, width, opacity }) => new GeoJsonLayer({
         id: `border-glow-${id}`,
         data: boundary,
         filled: false,
         stroked: true,
         pickable: false,
-        opacity,
-        getLineColor: [0, 0, 0],
+        // Alpha in the colour rather than layer opacity: the interleaved map ignored the latter.
+        getLineColor: [0, 0, 0, Math.round(opacity * 255)],
         lineWidthMinPixels: width,
         lineJointRounded: true,
-        parameters: {
-            blend: true,
-            depthTest: true,
-            blendFunc: [
-                WebGLRenderingContext.SRC_ALPHA,
-                WebGLRenderingContext.ONE_MINUS_SRC_ALPHA
-            ]
-        }
     }));
 }
 
@@ -89,13 +80,27 @@ export function regionLabelsLayer(regions, selectedRegionId) {
     });
 }
 
-// Names of the Landkreise and kreisfreie Städte of the selected Bezirk. Labels that would
-// overlap are dropped, the more populous district wins; kreisfreie Städte are set darker.
+// Names of the Landkreise and kreisfreie Städte of the selected Bezirk; kreisfreie Städte are
+// set darker. A Landkreis named like its kreisfreie Stadt (Augsburg, Passau, …) usually lies
+// around it, so only one of the two names is shown: the Stadt, unless the Landkreis is selected.
+// (deck.gl's CollisionFilterExtension does not work with the map interleaved into MapLibre.)
 export function districtLabelsLayer(districts, selectedDistrictId) {
     if (districts.length === 0) return null;
+    const byName = new Map();
+    districts.forEach(d => {
+        const list = byName.get(d.properties.shortName) ?? [];
+        byName.set(d.properties.shortName, [...list, d]);
+    });
+    const visible = districts.filter(d => {
+        const twins = byName.get(d.properties.shortName);
+        if (twins.length === 1) return true;
+        const selectedTwin = twins.find(t => t.properties.id === selectedDistrictId);
+        if (selectedTwin) return d === selectedTwin;
+        return d.properties.kind === 'stadt';
+    });
     return new TextLayer({
         id: 'district-labels',
-        data: districts,
+        data: visible,
         getPosition: d => d.centroid,
         getText: d => d.properties.shortName,
         getSize: d => (d.properties.kind === 'stadt' ? 13 : 12),
@@ -110,10 +115,6 @@ export function districtLabelsLayer(districts, selectedDistrictId) {
         characterSet: 'auto',
         getTextAnchor: 'middle',
         getAlignmentBaseline: 'center',
-        extensions: [new CollisionFilterExtension()],
-        // deck.gl wants priorities in [-1000, 1000]: 100 · log10(population) is about 450–700.
-        getCollisionPriority: d => Math.round(100 * Math.log10(d.properties.population)),
-        collisionTestProps: { sizeScale: 1.6 },
         parameters: { depthTest: false },
         updateTriggers: { getBackgroundColor: [selectedDistrictId] },
     });
@@ -127,7 +128,8 @@ export function districtsLayer(districts, selectedDistrictId) {
         data: districts,
         pickable: true,
         autoHighlight: true,
-        highlightColor: HOVER_COLOR,
+        // The selected district keeps its colour under the pointer (and under a Gemeinde's hover).
+        highlightColor: ({ object }) => object?.properties.id === selectedDistrictId ? SELECTED_COLOR : HOVER_COLOR,
         stroked: true,
         filled: true,
         getFillColor: d => {
