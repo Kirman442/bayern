@@ -159,7 +159,8 @@ const BavariaMapThree = () => {
 
     // The panel shows the Bezirk under the cursor until one is selected.
     const handleHover = useCallback(({ object, layer }) => {
-        const id = !regionId && layer?.id === 'regions' ? object.properties.id : null;
+        // deck.gl can report the layer without an object (e.g. when the pointer leaves it).
+        const id = !regionId && layer?.id === 'regions' ? object?.properties?.id ?? null : null;
         setHoveredRegionId(prev => (prev === id ? prev : id));
     }, [regionId]);
 
