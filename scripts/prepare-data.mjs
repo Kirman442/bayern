@@ -20,6 +20,8 @@ const OUT = new URL('../public/data/', import.meta.url);
 const GV_DATE = '31122025';
 const GV_URL = 'https://www.destatis.de/DE/Themen/Laender-Regionen/Regionales/Gemeindeverzeichnis/' +
     `Administrativ/Archiv/GVAuszugJ/${GV_DATE}_Auszug_GV.xlsx?__blob=publicationFile`;
+// Textkennzeichen of the Gemeindeverzeichnis for kreisangehörige Gemeinden.
+const GEMEINDE_TYPES = { '60': 'Markt', '63': 'Stadt', '64': 'Gemeinde', '67': 'Große Kreisstadt' };
 const REGION_CODES = ['091', '092', '093', '094', '095', '096', '097'];
 const PROPS = ['id', 'name', 'population', 'population_man', 'population_woman', 'area'];
 
@@ -36,13 +38,15 @@ async function fetchPopulation() {
         figures.set(key, sum);
     };
     for (const row of rows) {
-        const [satzart, , land, rb, kreis, , gem, , area, population, man, woman] = row;
+        const [satzart, textkennzeichen, land, rb, kreis, , gem, , area, population, man, woman] = row;
         if (satzart !== '60' || land !== '09') continue;
         const values = { population: population || 0, population_man: man || 0, population_woman: woman || 0, area };
         add(`09${rb}${kreis}${gem}`, values);
         // Grad der Verstädterung (EU DEGURBA): 1 dicht, 2 mittel, 3 gering besiedelt.
         // Only Gemeinden carry it; unpopulated gemeindefreie Gebiete have none.
         if (row[18]) figures.get(`09${rb}${kreis}${gem}`).urban = Number(row[18]);
+        // Kind of kreisangehörige Gemeinde from the Textkennzeichen: Stadt, Markt, Gemeinde, …
+        if (GEMEINDE_TYPES[textkennzeichen]) figures.get(`09${rb}${kreis}${gem}`).type = GEMEINDE_TYPES[textkennzeichen];
         add(`09${rb}${kreis}`, values);
         add(`09${rb}`, values);
     }

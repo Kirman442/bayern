@@ -87,7 +87,7 @@ const regionCode = (id) => id.slice(0, 3);
 // Hover card for any map object; drawn by React next to the pointer.
 function MapTooltip({ info }) {
     const p = info.object.properties;
-    const title = info.layerId === 'city-points' ? 'Stadt / Gemeinde'
+    const title = info.layerId === 'city-points' ? p.type ?? 'Gemeinde'
         : info.layerId === 'regions' ? 'Bezirk'
             : p.kind === 'stadt' ? 'Kreisfreie Stadt' : 'Landkreis';
     return (
