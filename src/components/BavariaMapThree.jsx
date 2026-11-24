@@ -21,6 +21,12 @@ import {
 // (interleaved), so the polygons can sit below the basemap's place and river names.
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
 
+// Impressum and Datenschutz sit in MapLibre's attribution ("i"), next to the CARTO credits.
+const LEGAL_URL = `${import.meta.env.BASE_URL}legal.html`;
+const ATTRIBUTION = {
+    customAttribution: `<a href="${LEGAL_URL}#impressum">Impressum</a> | <a href="${LEGAL_URL}#datenschutz">Datenschutz</a>`,
+};
+
 // The overlay applies this to MapLibre's canvas: a hand over everything clickable.
 const getCursor = ({ isHovering, isDragging }) =>
     isDragging ? 'grabbing' : isHovering ? 'pointer' : 'grab';
@@ -266,6 +272,7 @@ const BavariaMapThree = () => {
             <Map
                 ref={mapRef}
                 mapStyle={MAP_STYLE}
+                attributionControl={ATTRIBUTION}
                 initialViewState={initialViewState.current}
                 minZoom={MIN_ZOOM}
                 maxZoom={MAX_ZOOM}
