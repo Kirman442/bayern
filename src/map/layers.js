@@ -152,25 +152,26 @@ export function districtsLayer(districts, selectedDistrictId, hoveredId) {
 }
 
 // Gemeinden as circles; the selected one is drawn bigger, in orange with a black outline.
-export function cityPointsLayer(cities, selectedCityKey) {
+// Hover comes from state (map pointer or a row in the panel list), like the polygons.
+export function cityPointsLayer(cities, selectedCityKey, hoveredCityKey) {
     if (cities.length === 0) return null;
     return new ScatterplotLayer({
         id: 'city-points',
         data: cities,
         pickable: true,
         opacity: 0.9,
-        autoHighlight: true,
-        highlightColor: [255, 255, 0, 255],
         stroked: true,
         filled: true,
         radiusUnits: 'pixels',
         radiusMinPixels: 3,
         lineWidthMinPixels: 1,
         getPosition: d => d.geometry.coordinates,
-        getRadius: d => CITY_RADIUS_SCALE(d.properties.population) * (cityKey(d) === selectedCityKey ? 1.6 : 1),
+        getRadius: d => CITY_RADIUS_SCALE(d.properties.population)
+            * (cityKey(d) === selectedCityKey ? 1.6 : cityKey(d) === hoveredCityKey ? 1.3 : 1),
+        // Dark blue: an orange dot would vanish on its selected (orange) Landkreis.
         getFillColor: d => cityKey(d) === selectedCityKey
-            ? SELECTED_COLOR
-            : CITY_COLOR_SCALE(d.properties.population),
+            ? [37, 52, 148, 255]
+            : cityKey(d) === hoveredCityKey ? [255, 255, 0, 255] : CITY_COLOR_SCALE(d.properties.population),
         // A dark outline keeps even the white, small Gemeinden visible on any fill colour.
         getLineColor: d => cityKey(d) === selectedCityKey ? [0, 0, 0, 255] : CITY_OUTLINE,
         getLineWidth: d => cityKey(d) === selectedCityKey ? 2 : 1,
@@ -179,10 +180,10 @@ export function cityPointsLayer(cities, selectedCityKey) {
             depthTest: false
         },
         updateTriggers: {
-            getFillColor: [selectedCityKey],
+            getFillColor: [selectedCityKey, hoveredCityKey],
             getLineColor: [selectedCityKey],
             getLineWidth: [selectedCityKey],
-            getRadius: [selectedCityKey]
+            getRadius: [selectedCityKey, hoveredCityKey]
         }
     });
 }

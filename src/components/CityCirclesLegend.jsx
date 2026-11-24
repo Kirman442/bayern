@@ -6,8 +6,8 @@ const CityCirclesLegend = () => {
     const maxRadius = CITY_RADIUS_SCALE(CITY_LEGEND_VALUES[CITY_LEGEND_VALUES.length - 1]);
 
     return (
-        <div style={{ width: '250px', margin: '10px' }}>
-            <div style={{ fontSize: '12px', textAlign: 'center', marginBottom: '6px' }}>
+        <div style={{ width: '200px', marginTop: '8px' }}>
+            <div style={{ fontSize: '11px', marginBottom: '4px' }}>
                 Gemeinden nach Einwohnerzahl
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'flex-end' }}>
