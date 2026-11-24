@@ -268,6 +268,12 @@ const BavariaMapThree = () => {
         setHoveredRegionId(prev => (prev === id ? prev : id));
     }, [regionId]);
 
+    // No tooltip over what is already selected: the panel card shows the same figures.
+    const isSelected = ({ layerId, object }) =>
+        layerId === 'city-points' ? cityKey(object) === selectedCityKey
+            : layerId === 'districts' ? object.properties.id === districtId
+                : object.properties.id === regionId;
+
     if (data.error && !data.regions) {
         return (
             <div className="flex items-center justify-center h-screen">
@@ -307,7 +313,7 @@ const BavariaMapThree = () => {
                     pickingRadius={4}
                 />
             </Map>
-            {hoverInfo && <MapTooltip info={hoverInfo} />}
+            {hoverInfo && !isSelected(hoverInfo) && <MapTooltip info={hoverInfo} />}
             {legal && <LegalModal tab={legal} onTab={setLegal} onClose={() => setLegal(null)} />}
             <MapLegend showCities={visibleCities.length > 0} />
             <SidePanel
