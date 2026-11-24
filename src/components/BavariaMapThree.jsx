@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'r
 import { MapboxOverlay } from '@deck.gl/mapbox';
 import { Map, useControl } from '@vis.gl/react-maplibre';
 import SidePanel from './SidePanel';
+import LegalModal from './LegalModal';
 import MapLegend from './MapLegend';
 import { rankTable } from '../map/places';
 import { formatArea, formatDensity, formatPeople, formatUrban } from '../map/format';
@@ -22,10 +23,12 @@ import {
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
 
 // Impressum and Datenschutz sit in MapLibre's attribution ("i"), next to the CARTO credits.
-const LEGAL_URL = `${import.meta.env.BASE_URL}legal.html`;
+// The links only set the hash; the app opens them as a dialog (see legalFromHash).
 const ATTRIBUTION = {
-    customAttribution: `<a href="${LEGAL_URL}#impressum">Impressum</a> | <a href="${LEGAL_URL}#datenschutz">Datenschutz</a>`,
+    customAttribution: '<a href="#impressum">Impressum</a> | <a href="#datenschutz">Datenschutz</a>',
 };
+const LEGAL_IDS = ['impressum', 'datenschutz'];
+const legalFromHash = () => LEGAL_IDS.find(id => `#${id}` === window.location.hash) ?? null;
 
 // The overlay applies this to MapLibre's canvas: a hand over everything clickable.
 const getCursor = ({ isHovering, isDragging }) =>
@@ -108,23 +111,37 @@ const BavariaMapThree = () => {
     const { regionId, districtId, cityKey: selectedCityKey } = selection;
     const windowSize = useWindowSize();
 
-    // Esc goes one level up, like a click on an empty part of the map.
+    // Impressum / Datenschutz dialog: open while the hash is #impressum or #datenschutz.
+    const [legal, setLegal] = useState(legalFromHash);
+    useEffect(() => {
+        const onHashChange = () => {
+            const tab = legalFromHash();
+            if (tab) setLegal(tab);
+        };
+        window.addEventListener('hashchange', onHashChange);
+        return () => window.removeEventListener('hashchange', onHashChange);
+    }, []);
+
+    // Esc closes the dialog, otherwise goes one level up, like a click on an empty part of the map.
     useEffect(() => {
         const onKeyDown = (e) => {
-            if (e.key === 'Escape') dispatch({ type: 'back' });
+            if (e.key !== 'Escape') return;
+            if (legal) setLegal(null);
+            else dispatch({ type: 'back' });
         };
         window.addEventListener('keydown', onKeyDown);
         return () => window.removeEventListener('keydown', onKeyDown);
-    }, []);
+    }, [legal]);
 
-    // Keep the URL hash in sync with the selection (replaceState: no history entry per click).
+    // Keep the URL hash in sync with the selection or the open dialog (replaceState: no history
+    // entry per click).
     useEffect(() => {
-        const hash = selectionToHash(selection);
+        const hash = legal ? `#${legal}` : selectionToHash(selection);
         if (hash !== window.location.hash) {
             const { pathname, search } = window.location;
             window.history.replaceState(null, '', `${pathname}${search}${hash}`);
         }
-    }, [selection]);
+    }, [selection, legal]);
 
     // Everything the map and the panel show is derived from the selected ids.
     const region = useMemo(
@@ -291,6 +308,7 @@ const BavariaMapThree = () => {
                 />
             </Map>
             {hoverInfo && <MapTooltip info={hoverInfo} />}
+            {legal && <LegalModal tab={legal} onTab={setLegal} onClose={() => setLegal(null)} />}
             <MapLegend showCities={visibleCities.length > 0} />
             <SidePanel
                 dispatch={dispatch}
