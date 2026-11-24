@@ -19,10 +19,29 @@ import {
 // (interleaved), so the polygons can sit below the basemap's place and river names.
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
 
+// The overlay applies this to MapLibre's canvas: a hand over everything clickable.
+const getCursor = ({ isHovering, isDragging }) =>
+    isDragging ? 'grabbing' : isHovering ? 'pointer' : 'grab';
+
 function DeckOverlay(props) {
     const overlay = useControl(() => new MapboxOverlay({ ...props, interleaved: true }));
     overlay.setProps(props);
     return null;
+}
+
+// Basemap labels that only add noise at close zoom: street names, house numbers, POIs and the
+// names of villages and hamlets (our Gemeinde points already mark those). Matched by layer id
+// and by OpenMapTiles source layer, so a renamed layer in Carto's style still falls under it.
+const NOISY_LABEL_ID = /road|street|housenum|poi|hamlet|suburb|neighbou?rhood|village|airport|aeroway|rail|transit|shield|building/i;
+const NOISY_SOURCE_LAYERS = new Set(['transportation_name', 'housenumber', 'poi', 'aerodrome_label', 'mountain_peak']);
+
+function hideNoisyLabels(map) {
+    for (const layer of map.getStyle().layers) {
+        if (layer.type !== 'symbol') continue;
+        if (NOISY_LABEL_ID.test(layer.id) || NOISY_SOURCE_LAYERS.has(layer['source-layer'])) {
+            map.setLayoutProperty(layer.id, 'visibility', 'none');
+        }
+    }
 }
 
 // The first symbol layer of the style: map polygons go below it, our own labels above.
@@ -75,6 +94,7 @@ const BavariaMapThree = () => {
     const data = useBavariaData();
     const [selection, dispatch] = useReducer(selectionReducer, window.location.hash, selectionFromHash);
     const [hoveredRegionId, setHoveredRegionId] = useState(null);
+    const [hoveredDistrictId, setHoveredDistrictId] = useState(null);
     const { regionId, districtId, cityKey: selectedCityKey } = selection;
     const windowSize = useWindowSize();
 
@@ -140,16 +160,16 @@ const BavariaMapThree = () => {
     // Layers are rebuilt only when their data or the selection changes, not on hover.
     const glowLayers = useMemo(() => boundaryGlowLayers(data.boundary), [data.boundary]);
     const regionLayer = useMemo(
-        () => data.regions && regionsLayer(data.regions, regionId),
-        [data.regions, regionId]
+        () => data.regions && regionsLayer(data.regions, regionId, hoveredRegionId),
+        [data.regions, regionId, hoveredRegionId]
     );
     const labelsLayer = useMemo(
         () => data.regions && regionLabelsLayer(data.regions, regionId),
         [data.regions, regionId]
     );
     const districtLayer = useMemo(
-        () => districtsLayer(regionDistricts, districtId),
-        [regionDistricts, districtId]
+        () => districtsLayer(regionDistricts, districtId, hoveredDistrictId),
+        [regionDistricts, districtId, hoveredDistrictId]
     );
     const districtNamesLayer = useMemo(
         () => districtLabelsLayer(regionDistricts, districtId),
@@ -197,13 +217,14 @@ const BavariaMapThree = () => {
     // The panel shows the Bezirk under the cursor until one is selected.
     const [hoverInfo, setHoverInfo] = useState(null);
     const handleHover = useCallback(({ object, layer, x, y }) => {
-        setHoverInfo(object?.properties ? { object, layerId: layer.id, x, y } : null);
+        const hovered = object?.properties ? { object, layerId: layer.id, x, y } : null;
+        setHoverInfo(hovered);
+        // Only the polygon directly under the pointer is highlighted, never the one under a Gemeinde.
+        const districtHover = hovered?.layerId === 'districts' ? object.properties.id : null;
+        setHoveredDistrictId(prev => (prev === districtHover ? prev : districtHover));
         // deck.gl can report the layer without an object (e.g. when the pointer leaves it).
         const id = !regionId && layer?.id === 'regions' ? object?.properties?.id ?? null : null;
         setHoveredRegionId(prev => (prev === id ? prev : id));
-        // A hand over everything clickable; MapLibre shows its grab cursor elsewhere.
-        const canvas = mapRef.current?.getCanvas();
-        if (canvas) canvas.style.cursor = object ? 'pointer' : '';
     }, [regionId]);
 
     if (data.error && !data.regions) {
@@ -231,6 +252,7 @@ const BavariaMapThree = () => {
                 minZoom={MIN_ZOOM}
                 maxZoom={MAX_ZOOM}
                 onLoad={(e) => {
+                    hideNoisyLabels(e.target);
                     setBeforeId(firstLabelLayerId(e.target));
                     setMapLoaded(true);
                 }}
@@ -239,6 +261,8 @@ const BavariaMapThree = () => {
                     layers={layers}
                     onClick={handleClick}
                     onHover={handleHover}
+                    getCursor={getCursor}
+                    pickingRadius={4}
                 />
             </Map>
             {hoverInfo && <MapTooltip info={hoverInfo} />}
