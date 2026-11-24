@@ -141,4 +141,8 @@ body {
     bottom: auto;
     left: 12px;
   }
+
+  .city-color-toggle-legend .hint {
+    display: none;
+  }
 }
