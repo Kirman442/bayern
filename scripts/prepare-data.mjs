@@ -4,15 +4,57 @@
 // - polygons are simplified for zoom 6–10 and coordinates rounded to ~1 m
 // - Landkreise and kreisfreie Städte go into one file with a `kind` field
 // - all Gemeinden go into one file with only the fields the app uses
+// - population and area come from the Destatis Gemeindeverzeichnis (GV-ISys) and are
+//   merged in by AGS; Landkreise and Regierungsbezirke are sums of their Gemeinden
+//   (including gemeindefreie Gebiete, which add area but no population)
 import { mkdir, writeFile } from 'node:fs/promises';
 import mapshaper from 'mapshaper';
+import { readSheet } from 'read-excel-file/node';
 
 const { applyCommands } = mapshaper;
 
 const SOURCE = 'https://raw.githubusercontent.com/Kirman442/deckgl/main';
 const OUT = new URL('../public/data/', import.meta.url);
+// Stand 31.12.2025, Bevölkerung auf Grundlage des Zensus 2022. For a newer year, change
+// the date here and the "Stand" line in src/components/SidePanel.jsx.
+const GV_DATE = '31122025';
+const GV_URL = 'https://www.destatis.de/DE/Themen/Laender-Regionen/Regionales/Gemeindeverzeichnis/' +
+    `Administrativ/Archiv/GVAuszugJ/${GV_DATE}_Auszug_GV.xlsx?__blob=publicationFile`;
 const REGION_CODES = ['091', '092', '093', '094', '095', '096', '097'];
 const PROPS = ['id', 'name', 'population', 'population_man', 'population_woman', 'area'];
+
+// Reads the Gemeinde rows (Satzart 60) for Bayern and sums them up per Kreis and Bezirk.
+// Returns a Map from AGS (09 + RB + Kreis [+ Gem]) or region id (09 + RB) to figures.
+async function fetchPopulation() {
+    const response = await fetch(GV_URL);
+    if (!response.ok) throw new Error(`Gemeindeverzeichnis: HTTP ${response.status}`);
+    const rows = await readSheet(Buffer.from(await response.arrayBuffer()), `Onlineprodukt_Gemeinden${GV_DATE}`);
+    const figures = new Map();
+    const add = (key, values) => {
+        const sum = figures.get(key) ?? { population: 0, population_man: 0, population_woman: 0, area: 0 };
+        for (const k in sum) sum[k] += values[k];
+        figures.set(key, sum);
+    };
+    for (const [satzart, , land, rb, kreis, , gem, , area, population, man, woman] of rows) {
+        if (satzart !== '60' || land !== '09') continue;
+        const values = { population: population || 0, population_man: man || 0, population_woman: woman || 0, area };
+        add(`09${rb}${kreis}${gem}`, values);
+        add(`09${rb}${kreis}`, values);
+        add(`09${rb}`, values);
+    }
+    for (const sum of figures.values()) sum.area = Math.round(sum.area * 100) / 100;
+    return figures;
+}
+
+// Overwrites population and area with the official figures; fails loudly on a missing AGS.
+function withPopulation(features, figures, keyOf) {
+    return features.map(f => {
+        const key = keyOf(f.properties);
+        const values = figures.get(key);
+        if (!values) throw new Error(`No population figures for ${key} (${f.properties.name})`);
+        return { ...f, properties: { ...f.properties, ...values } };
+    });
+}
 
 async function fetchJson(path) {
     const response = await fetch(`${SOURCE}/${path}`);
@@ -53,7 +95,8 @@ async function write(name, data) {
 
 await mkdir(OUT, { recursive: true });
 
-const [boundary, regions, landkreise, staedte, ...cityFiles] = await Promise.all([
+const [population, boundary, regions, landkreise, staedte, ...cityFiles] = await Promise.all([
+    fetchPopulation(),
     fetchJson('boundaries/germany_bayern_boundaries.json'),
     fetchJson('regions_filtered_min.json'),
     fetchJson('landkreisestaedte_min.json'),
@@ -65,7 +108,10 @@ const outline = await simplify({ 'boundary.json': { ...boundary, features: bound
 await write('boundary.json', outline['boundary.json']);
 
 const regionShapes = await simplify({ 'regions.json': cleanFeatures(regions) }, 20);
-await write('regions.json', regionShapes['regions.json']);
+await write('regions.json', {
+    type: 'FeatureCollection',
+    features: withPopulation(regionShapes['regions.json'].features, population, p => p.id),
+});
 
 const districtShapes = await simplify({
     'landkreise.json': cleanFeatures(landkreise, { kind: 'landkreis' }),
@@ -73,15 +119,18 @@ const districtShapes = await simplify({
 }, 15);
 await write('districts.json', {
     type: 'FeatureCollection',
-    features: [...districtShapes['landkreise.json'].features, ...districtShapes['staedte.json'].features],
+    features: withPopulation(
+        [...districtShapes['landkreise.json'].features, ...districtShapes['staedte.json'].features],
+        population, p => p.id,
+    ),
 });
 
 const round = (n) => Math.round(n * 1e5) / 1e5;
 await write('cities.json', {
     type: 'FeatureCollection',
-    features: cityFiles.flatMap(file => file.features).map(f => ({
+    features: withPopulation(cityFiles.flatMap(file => file.features).map(f => ({
         type: 'Feature',
         geometry: { type: 'Point', coordinates: f.geometry.coordinates.map(round) },
         properties: { ...pick(f.properties, [...PROPS, 'land-id']), name: cleanName(f.properties.name) },
-    })),
+    })), population, p => p['land-id'] + p.id),
 });

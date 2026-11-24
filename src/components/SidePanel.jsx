@@ -134,6 +134,10 @@ const SidePanel = ({ selection, dispatch, region, hoveredRegion, districts, dist
                     Karte zurücksetzen
                 </button>
             )}
+
+            <p className="mt-4 text-xs text-gray-500">
+                Bevölkerung Stand: 31.12.2025 (Basis Zensus 2022) · Quelle: Bayerisches Landesamt für Statistik / Destatis
+            </p>
         </div>
     );
 };
