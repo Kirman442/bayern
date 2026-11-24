@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'r
 import { MapboxOverlay } from '@deck.gl/mapbox';
 import { Map, useControl } from '@vis.gl/react-maplibre';
 import SidePanel from './SidePanel';
-import CityColorToggle from './CityColorToggle';
 import { formatArea, formatDensity, formatPeople, formatUrban } from '../map/format';
 import { MAX_ZOOM, MIN_ZOOM, boundsOf, viewStateFor } from '../map/camera';
 import useBavariaData from '../map/useBavariaData';
@@ -97,7 +96,6 @@ const BavariaMapThree = () => {
     const [selection, dispatch] = useReducer(selectionReducer, window.location.hash, selectionFromHash);
     const [hoveredRegionId, setHoveredRegionId] = useState(null);
     const [hoveredDistrictId, setHoveredDistrictId] = useState(null);
-    const [cityColorMode, setCityColorMode] = useState('population');
     const { regionId, districtId, cityKey: selectedCityKey } = selection;
     const windowSize = useWindowSize();
 
@@ -179,8 +177,8 @@ const BavariaMapThree = () => {
         [regionDistricts, districtId]
     );
     const citiesLayer = useMemo(
-        () => cityPointsLayer(visibleCities, selectedCityKey, cityColorMode),
-        [visibleCities, selectedCityKey, cityColorMode]
+        () => cityPointsLayer(visibleCities, selectedCityKey),
+        [visibleCities, selectedCityKey]
     );
     const [beforeId, setBeforeId] = useState(null);
     const layers = useMemo(() => {
@@ -269,7 +267,6 @@ const BavariaMapThree = () => {
                 />
             </Map>
             {hoverInfo && <MapTooltip info={hoverInfo} />}
-            {visibleCities.length > 0 && <CityColorToggle mode={cityColorMode} onChange={setCityColorMode} />}
             <SidePanel
                 selection={selection}
                 dispatch={dispatch}

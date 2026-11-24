@@ -1,6 +1,6 @@
 import { GeoJsonLayer, ScatterplotLayer, TextLayer } from '@deck.gl/layers';
 import { cityKey } from './selection';
-import { CITY_COLOR_SCALE, CITY_RADIUS_SCALE, DENSITY_COLOR_SCALE, URBAN_UNKNOWN_COLOR, density, urbanClass } from './scales';
+import { CITY_COLOR_SCALE, CITY_RADIUS_SCALE, DENSITY_COLOR_SCALE, density } from './scales';
 
 // Warm colours stand out against the blue-green density scale; hover is lighter than selection.
 const HOVER_COLOR = [254, 196, 79, 255];
@@ -152,8 +152,7 @@ export function districtsLayer(districts, selectedDistrictId, hoveredId) {
 }
 
 // Gemeinden as circles; the selected one is drawn bigger, in orange with a black outline.
-// colorMode 'population' shades by Einwohnerzahl, 'urban' by Grad der Verstädterung.
-export function cityPointsLayer(cities, selectedCityKey, colorMode = 'population') {
+export function cityPointsLayer(cities, selectedCityKey) {
     if (cities.length === 0) return null;
     return new ScatterplotLayer({
         id: 'city-points',
@@ -171,9 +170,7 @@ export function cityPointsLayer(cities, selectedCityKey, colorMode = 'population
         getRadius: d => CITY_RADIUS_SCALE(d.properties.population) * (cityKey(d) === selectedCityKey ? 1.6 : 1),
         getFillColor: d => cityKey(d) === selectedCityKey
             ? SELECTED_COLOR
-            : colorMode === 'urban'
-                ? urbanClass(d.properties.urban)?.color ?? URBAN_UNKNOWN_COLOR
-                : CITY_COLOR_SCALE(d.properties.population),
+            : CITY_COLOR_SCALE(d.properties.population),
         // A dark outline keeps even the white, small Gemeinden visible on any fill colour.
         getLineColor: d => cityKey(d) === selectedCityKey ? [0, 0, 0, 255] : CITY_OUTLINE,
         getLineWidth: d => cityKey(d) === selectedCityKey ? 2 : 1,
@@ -182,7 +179,7 @@ export function cityPointsLayer(cities, selectedCityKey, colorMode = 'population
             depthTest: false
         },
         updateTriggers: {
-            getFillColor: [selectedCityKey, colorMode],
+            getFillColor: [selectedCityKey],
             getLineColor: [selectedCityKey],
             getLineWidth: [selectedCityKey],
             getRadius: [selectedCityKey]
