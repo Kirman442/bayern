@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'r
 import { MapboxOverlay } from '@deck.gl/mapbox';
 import { Map, useControl } from '@vis.gl/react-maplibre';
 import SidePanel from './SidePanel';
-import { formatArea, formatDensity, formatPeople } from '../map/format';
+import CityColorToggle from './CityColorToggle';
+import { formatArea, formatDensity, formatPeople, formatUrban } from '../map/format';
 import { MAX_ZOOM, MIN_ZOOM, boundsOf, viewStateFor } from '../map/camera';
 import useBavariaData from '../map/useBavariaData';
 import { cityKey, selectionFromHash, selectionReducer, selectionToHash } from '../map/selection';
@@ -86,6 +87,7 @@ function MapTooltip({ info }) {
             <div><b>Bevölkerung:</b> {formatPeople(p.population)}</div>
             <div><b>Fläche:</b> {formatArea(p.area)}</div>
             <div><b>Dichte:</b> {formatDensity(p)}</div>
+            {p.urban && <div><b>Verstädterung:</b> {formatUrban(p.urban)}</div>}
         </div>
     );
 }
@@ -95,6 +97,7 @@ const BavariaMapThree = () => {
     const [selection, dispatch] = useReducer(selectionReducer, window.location.hash, selectionFromHash);
     const [hoveredRegionId, setHoveredRegionId] = useState(null);
     const [hoveredDistrictId, setHoveredDistrictId] = useState(null);
+    const [cityColorMode, setCityColorMode] = useState('population');
     const { regionId, districtId, cityKey: selectedCityKey } = selection;
     const windowSize = useWindowSize();
 
@@ -176,8 +179,8 @@ const BavariaMapThree = () => {
         [regionDistricts, districtId]
     );
     const citiesLayer = useMemo(
-        () => cityPointsLayer(visibleCities, selectedCityKey),
-        [visibleCities, selectedCityKey]
+        () => cityPointsLayer(visibleCities, selectedCityKey, cityColorMode),
+        [visibleCities, selectedCityKey, cityColorMode]
     );
     const [beforeId, setBeforeId] = useState(null);
     const layers = useMemo(() => {
@@ -266,6 +269,7 @@ const BavariaMapThree = () => {
                 />
             </Map>
             {hoverInfo && <MapTooltip info={hoverInfo} />}
+            {visibleCities.length > 0 && <CityColorToggle mode={cityColorMode} onChange={setCityColorMode} />}
             <SidePanel
                 selection={selection}
                 dispatch={dispatch}

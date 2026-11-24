@@ -32,3 +32,13 @@ export const CITY_COLOR_SCALE = scaleLog()
     .clamp(true);
 
 export const CITY_LEGEND_VALUES = [1000, 5000, 20000, 60000];
+
+// Grad der Verstädterung (EU DEGURBA, Destatis): class 1–3 per Gemeinde.
+export const URBAN_CLASSES = [
+    { value: 1, label: 'dicht besiedelt', short: 'städtisch', color: [178, 24, 43] },
+    { value: 2, label: 'mittlere Besiedlungsdichte', short: 'halbstädtisch', color: [244, 165, 130] },
+    { value: 3, label: 'gering besiedelt', short: 'ländlich', color: [146, 197, 100] },
+];
+const URBAN_BY_VALUE = Object.fromEntries(URBAN_CLASSES.map(c => [c.value, c]));
+export const urbanClass = (value) => URBAN_BY_VALUE[value] ?? null;
+export const URBAN_UNKNOWN_COLOR = [200, 200, 200];

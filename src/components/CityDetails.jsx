@@ -1,4 +1,4 @@
-import { formatArea, formatDensity, formatPeople } from '../map/format';
+import { formatArea, formatDensity, formatPeople, formatUrban } from '../map/format';
 
 const CityDetails = ({ city }) => {
     if (!city) return null;
@@ -11,6 +11,7 @@ const CityDetails = ({ city }) => {
             <p className="text-base">Männer: {formatPeople(city.properties.population_man)}</p>
             <p className="text-base">Frauen: {formatPeople(city.properties.population_woman)}</p>
             <p className="text-base">Bevölkerungsdichte: {formatDensity(city.properties)}</p>
+            {city.properties.urban && <p className="text-base">Verstädterung: {formatUrban(city.properties.urban)}</p>}
         </div>
     );
 };
