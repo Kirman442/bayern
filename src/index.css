@@ -82,14 +82,18 @@ body {
   }
 }
 
-/* Breadcrumbs double as the panel title. */
+/* Breadcrumbs double as the panel title. Room for two lines is always reserved, so the card
+   below doesn't jump when a long Gemeinde name wraps. */
 .crumbs {
   display: flex;
   flex-wrap: wrap;
+  align-content: flex-start;
   align-items: center;
   gap: 2px 4px;
+  min-height: 38px;
   margin-bottom: 8px;
   font-size: 13px;
+  line-height: 18px;
 }
 .crumb { display: flex; align-items: center; gap: 4px; }
 .crumb .sep { color: #9ca3af; }
