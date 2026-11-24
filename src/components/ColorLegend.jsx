@@ -1,7 +1,7 @@
 import { DENSITY_COLOR_SCALE } from '../map/scales';
 import { formatInt } from '../map/format';
 
-const WIDTH = 250;
+const WIDTH = 200;
 const BAR_HEIGHT = 10;
 
 // Classes of the density scale used for the Landkreise and kreisfreie Städte.
@@ -11,8 +11,8 @@ const ColorLegend = () => {
     const segment = WIDTH / colors.length;
 
     return (
-        <div style={{ width: WIDTH, margin: '10px' }}>
-            <div style={{ fontSize: '12px', textAlign: 'center', marginBottom: '6px' }}>
+        <div style={{ width: WIDTH }}>
+            <div style={{ fontSize: '11px', marginBottom: '4px' }}>
                 Bevölkerungsdichte, Einw./km²
             </div>
             <svg width={WIDTH} height={BAR_HEIGHT + 18} style={{ overflow: 'visible' }}>

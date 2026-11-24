@@ -9,7 +9,12 @@ export const formatArea = (km2) => `${oneDecimal.format(km2)} km²`;
 export const formatDensity = (props) => `${oneDecimal.format(props.population / props.area)} Einw./km²`;
 
 // "ländlich (gering besiedelt)" for a Grad-der-Verstädterung class.
-export const formatUrban = (value) => {
+// short: just "ländlich", for the compact stat grid.
+export const formatUrban = (value, short = false) => {
     const c = urbanClass(value);
-    return c ? `${c.short} (${c.label})` : '–';
+    if (!c) return '–';
+    return short ? c.short : `${c.short} (${c.label})`;
 };
+
+const percent = new Intl.NumberFormat('de-DE', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 });
+export const formatPercent = (share) => percent.format(share);

@@ -6,7 +6,6 @@ export const initialSelection = {
     regionId: null,   // Bezirk, e.g. '091'
     districtId: null, // Landkreis or kreisfreie Stadt, e.g. '09171'
     cityKey: null,    // Gemeinde, `${land-id}-${id}`
-    tab: 'regions',   // 'regions' | 'districts'
 };
 
 export const cityKey = (city) => `${city.properties['land-id']}-${city.properties.id}`;
@@ -16,16 +15,16 @@ export function selectionReducer(state, action) {
         case 'selectRegion':
             return { ...initialSelection, regionId: action.id };
         case 'selectDistrict':
-            return { ...state, districtId: action.id, cityKey: null, tab: 'districts' };
+            return { ...state, districtId: action.id, cityKey: null };
         case 'selectCity':
-            return { ...state, cityKey: action.key, tab: 'districts' };
+            // The key starts with the Gemeinde's Landkreis, which becomes the selected district
+            // (a Gemeinde can be clicked on the map while a kreisfreie Stadt is selected).
+            return { ...state, districtId: action.key.split('-')[0], cityKey: action.key };
         case 'back':
             // One level up: Gemeinde → Landkreis → Bezirk → whole Bavaria.
             if (state.cityKey) return { ...state, cityKey: null };
             if (state.districtId) return { ...state, districtId: null };
             return initialSelection;
-        case 'setTab':
-            return state.regionId ? { ...state, tab: action.tab } : state;
         case 'reset':
             return initialSelection;
         default:
@@ -47,7 +46,6 @@ export function selectionFromHash(hash) {
         regionId,
         districtId: districtId || null,
         cityKey: key || null,
-        tab: districtId || key ? 'districts' : 'regions',
     };
 }
 

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'r
 import { MapboxOverlay } from '@deck.gl/mapbox';
 import { Map, useControl } from '@vis.gl/react-maplibre';
 import SidePanel from './SidePanel';
+import MapLegend from './MapLegend';
+import { rankTable } from '../map/places';
 import { formatArea, formatDensity, formatPeople, formatUrban } from '../map/format';
 import { MAX_ZOOM, MIN_ZOOM, boundsOf, viewStateFor } from '../map/camera';
 import useBavariaData from '../map/useBavariaData';
@@ -96,6 +98,7 @@ const BavariaMapThree = () => {
     const [selection, dispatch] = useReducer(selectionReducer, window.location.hash, selectionFromHash);
     const [hoveredRegionId, setHoveredRegionId] = useState(null);
     const [hoveredDistrictId, setHoveredDistrictId] = useState(null);
+    const [hoveredCityKey, setHoveredCityKey] = useState(null);
     const { regionId, districtId, cityKey: selectedCityKey } = selection;
     const windowSize = useWindowSize();
 
@@ -153,32 +156,44 @@ const BavariaMapThree = () => {
         return viewStateFor(boundsOf(focus), { ...windowSize, padding: cameraPadding(windowSize) });
     }, [district, region, data.regions, windowSize]);
 
-    const hoveredRegion = useMemo(
-        () => data.regions?.find(r => r.properties.id === hoveredRegionId) ?? null,
-        [data.regions, hoveredRegionId]
-    );
+    // Ranks for the "Platz … von …" line of the card.
+    const ranks = useMemo(() => ({
+        regions: rankTable(data.regions ?? [], f => f.properties.id),
+        districts: rankTable(data.districts, f => f.properties.id),
+        cities: rankTable(data.cities, cityKey),
+    }), [data.regions, data.districts, data.cities]);
+
+    // A row in the panel list highlights its object on the map, like the pointer does.
+    // A row in the panel list highlights its object on the map, like the pointer does. Kept apart
+    // from the map's own hover state: deck.gl reports "nothing hovered" a frame after the pointer
+    // leaves the map for the panel, which would wipe the row's highlight.
+    const [listHover, setListHover] = useState(null);
+    const hoverFor = (kind, mapValue) => (listHover ? (listHover.kind === kind ? listHover.key : null) : mapValue);
+    const hoverRegion = hoverFor('region', hoveredRegionId);
+    const hoverDistrict = hoverFor('district', hoveredDistrictId);
+    const hoverCity = hoverFor('city', hoveredCityKey);
 
     // Layers are rebuilt only when their data or the selection changes, not on hover.
     const glowLayers = useMemo(() => boundaryGlowLayers(data.boundary), [data.boundary]);
     const regionLayer = useMemo(
-        () => data.regions && regionsLayer(data.regions, regionId, hoveredRegionId),
-        [data.regions, regionId, hoveredRegionId]
+        () => data.regions && regionsLayer(data.regions, regionId, hoverRegion),
+        [data.regions, regionId, hoverRegion]
     );
     const labelsLayer = useMemo(
         () => data.regions && regionLabelsLayer(data.regions, regionId),
         [data.regions, regionId]
     );
     const districtLayer = useMemo(
-        () => districtsLayer(regionDistricts, districtId, hoveredDistrictId),
-        [regionDistricts, districtId, hoveredDistrictId]
+        () => districtsLayer(regionDistricts, districtId, hoverDistrict),
+        [regionDistricts, districtId, hoverDistrict]
     );
     const districtNamesLayer = useMemo(
         () => districtLabelsLayer(regionDistricts, districtId),
         [regionDistricts, districtId]
     );
     const citiesLayer = useMemo(
-        () => cityPointsLayer(visibleCities, selectedCityKey),
-        [visibleCities, selectedCityKey]
+        () => cityPointsLayer(visibleCities, selectedCityKey, hoverCity),
+        [visibleCities, selectedCityKey, hoverCity]
     );
     const [beforeId, setBeforeId] = useState(null);
     const layers = useMemo(() => {
@@ -223,6 +238,8 @@ const BavariaMapThree = () => {
         // Only the polygon directly under the pointer is highlighted, never the one under a Gemeinde.
         const districtHover = hovered?.layerId === 'districts' ? object.properties.id : null;
         setHoveredDistrictId(prev => (prev === districtHover ? prev : districtHover));
+        const cityHover = hovered?.layerId === 'city-points' ? cityKey(object) : null;
+        setHoveredCityKey(prev => (prev === cityHover ? prev : cityHover));
         // deck.gl can report the layer without an object (e.g. when the pointer leaves it).
         const id = !regionId && layer?.id === 'regions' ? object?.properties?.id ?? null : null;
         setHoveredRegionId(prev => (prev === id ? prev : id));
@@ -267,15 +284,18 @@ const BavariaMapThree = () => {
                 />
             </Map>
             {hoverInfo && <MapTooltip info={hoverInfo} />}
+            <MapLegend showCities={visibleCities.length > 0} />
             <SidePanel
-                selection={selection}
                 dispatch={dispatch}
+                regions={data.regions}
                 region={region}
-                hoveredRegion={hoveredRegion}
                 districts={regionDistricts}
                 district={district}
                 cities={visibleCities}
                 city={selectedCity}
+                ranks={ranks}
+                hovered={{ region: hoverRegion, district: hoverDistrict, city: hoverCity }}
+                onHover={(place) => setListHover(place && { kind: place.kind, key: place.key })}
             />
         </div>
     );
