@@ -23,7 +23,8 @@ export function districtPlace(feature) {
 
 export function cityPlace(feature) {
     const p = feature.properties;
-    return { kind: 'city', key: cityKey(feature), title: p.name, label: KIND_LABELS.city, props: p };
+    // Stadt, Große Kreisstadt, Markt or Gemeinde, from the Gemeindeverzeichnis.
+    return { kind: 'city', key: cityKey(feature), title: p.name, label: p.type ?? KIND_LABELS.city, props: p };
 }
 
 // The whole of Bavaria, summed from the Bezirke.
