@@ -4,6 +4,8 @@ import PlaceList from './PlaceList';
 import { formatInt } from '../map/format';
 import { bayernPlace, cityPlace, districtPlace, regionPlace } from '../map/places';
 
+const LEGAL_URL = `${import.meta.env.BASE_URL}legal.html`;
+
 // Bayern › Bezirk › Kreis › Gemeinde; every level above the current one is a link.
 const Breadcrumbs = ({ items }) => (
     <nav aria-label="Auswahl" className="crumbs">
@@ -130,6 +132,10 @@ const SidePanel = ({
             />
             <p className="source">
                 Stand: 31.12.2025 (Basis Zensus 2022) · Quelle: Bayerisches Landesamt für Statistik / Destatis
+                {/* On phones the sheet covers the map's attribution, so the legal links repeat here. */}
+                <span className="legal-links">
+                    {' · '}<a href={`${LEGAL_URL}#impressum`}>Impressum</a>{' · '}<a href={`${LEGAL_URL}#datenschutz`}>Datenschutz</a>
+                </span>
             </p>
         </div>
     );

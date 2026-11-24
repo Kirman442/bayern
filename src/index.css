@@ -227,6 +227,11 @@ body {
   font-size: 11px;
   color: #9ca3af;
 }
+.source a { color: #6b7280; text-decoration: underline; }
+.legal-links { display: none; }
+@media (max-width: 640px) {
+  .legal-links { display: inline; }
+}
 
 .map-legend {
   position: absolute;
